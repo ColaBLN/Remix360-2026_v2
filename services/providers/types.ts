@@ -8,6 +8,17 @@
 export type Quality = 'eco' | 'hd' | 'ultra';
 export type ProviderId = 'gemini' | 'fal';
 
+/**
+ * Wie ausführlich der Prompt sein darf.
+ *
+ * 'structured' – Gemini-artige Modelle verarbeiten lange, gegliederte Prompts
+ *   mit Randbedingungen gut.
+ * 'concise' – instruktionsbasierte Editoren wie FLUX Kontext folgen kurzen,
+ *   direkten Anweisungen. Eine lange Liste aus Verboten verwässert dort die
+ *   eigentliche Anweisung, das Ergebnis wird dann sichtbar zu zurückhaltend.
+ */
+export type PromptStyle = 'structured' | 'concise';
+
 export type AspectRatio =
   | '1:1' | '2:3' | '3:2' | '3:4' | '4:3'
   | '4:5' | '5:4' | '9:16' | '16:9' | '21:9';
@@ -54,6 +65,7 @@ export interface ModelDescriptor {
   costUsd: number;
   /** Kantenlänge, auf die vor dem Upload verkleinert wird. */
   uploadMaxEdge: number;
+  promptStyle: PromptStyle;
   supports: { outpaint: boolean; aspectRatio: boolean };
 }
 

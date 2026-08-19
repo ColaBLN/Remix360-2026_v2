@@ -63,14 +63,44 @@ export function connectedProviders(): ProviderId[] {
   return (Object.keys(PROVIDERS) as ProviderId[]).filter(id => getKey(id).length > 0);
 }
 
-/** Preistafel im Kosten-Dialog: je Stufe das günstigste verbundene Modell. */
+/* ---------------------------------------------------------------- */
+/* Modellauswahl pro Stufe                                           */
+/* ---------------------------------------------------------------- */
+
+const MODEL_PREFIX = 'remix360.model.';
+
+/** Modelle einer Stufe, die mit den hinterlegten Schlüsseln nutzbar sind. */
+export function modelsForQuality(quality: Quality): ModelDescriptor[] {
+  const active = connectedProviders();
+  const pool = active.length ? active.flatMap(id => PROVIDERS[id].models) : ALL_MODELS;
+  return pool.filter(m => m.quality === quality);
+}
+
+export function getSelectedModelId(quality: Quality): string | null {
+  return safeLocalStorage.getItem(MODEL_PREFIX + quality);
+}
+
+export function setSelectedModelId(quality: Quality, modelId: string | null): void {
+  if (modelId) safeLocalStorage.setItem(MODEL_PREFIX + quality, modelId);
+  else safeLocalStorage.removeItem(MODEL_PREFIX + quality);
+}
+
+/** Vom Nutzer gewähltes Modell, sofern es zur Stufe passt und nutzbar ist. */
+function preferredModel(quality: Quality): ModelDescriptor | undefined {
+  const id = getSelectedModelId(quality);
+  if (!id) return undefined;
+  return modelsForQuality(quality).find(m => m.id === id);
+}
+
+/** Preistafel im Kosten-Dialog: je Stufe das aktive Modell. */
 export function pricingByQuality(): Array<{
   quality: Quality; label: string; providerLabel: string; costUsd: number; costEur: number;
 }> {
   const active = connectedProviders();
   const pool = active.length ? active.flatMap(id => PROVIDERS[id].models) : PROVIDERS.gemini.models;
   return (['eco', 'hd', 'ultra'] as Quality[]).map(quality => {
-    const model = pool.filter(m => m.quality === quality).sort((a, b) => a.costUsd - b.costUsd)[0];
+    const model = preferredModel(quality)
+      ?? pool.filter(m => m.quality === quality).sort((a, b) => a.costUsd - b.costUsd)[0];
     return {
       quality,
       label: model?.label ?? '—',
@@ -144,7 +174,8 @@ export function resolveRoute(ctx: RouteContext): Route {
   }
 
   const candidates = [...available].sort((a, b) => RANK[a.quality] - RANK[b.quality]);
-  const exact = candidates.find(m => m.quality === target);
+  // Manuelle Wahl schlägt die Standardsortierung.
+  const exact = preferredModel(target) ?? candidates.find(m => m.quality === target);
   const lower = [...candidates].reverse().find(m => RANK[m.quality] <= RANK[target]);
   const model = exact ?? lower ?? candidates[0];
 

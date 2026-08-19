@@ -18,6 +18,7 @@ export const GEMINI_MODELS: ModelDescriptor[] = [
     quality: 'eco',
     costUsd: 0.039,
     uploadMaxEdge: 1568,
+    promptStyle: 'structured',
     supports: { outpaint: true, aspectRatio: true },
   },
   {
@@ -28,6 +29,7 @@ export const GEMINI_MODELS: ModelDescriptor[] = [
     quality: 'hd',
     costUsd: 0.11,
     uploadMaxEdge: 2048,
+    promptStyle: 'structured',
     supports: { outpaint: true, aspectRatio: true },
   },
   {
@@ -38,6 +40,7 @@ export const GEMINI_MODELS: ModelDescriptor[] = [
     quality: 'ultra',
     costUsd: 0.24,
     uploadMaxEdge: 2048,
+    promptStyle: 'structured',
     supports: { outpaint: true, aspectRatio: true },
   },
 ];

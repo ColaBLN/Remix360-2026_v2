@@ -126,6 +126,28 @@ vorbei. Für echten Schutz braucht es Vercel Deployment Protection.
 nie ein API-Schlüssel stehen. Die alten `VITE_API_KEY` und
 `VITE_GEMINI_API_KEY` sind deshalb ersatzlos entfernt.
 
+## fal.ai als Alleinanbieter
+
+Ein fal-Schlüssel genügt. fal ist kein eigener Modellhersteller, sondern
+hostet fremde Modelle — darunter Googles Bildmodelle unter dem Namen
+*Nano Banana*:
+
+| Stufe | Modell auf fal | entspricht |
+|---|---|---|
+| Eco | Nano Banana | Gemini 2.5 Flash Image |
+| HD | Nano Banana 2 | Gemini 3 Flash Image |
+| Ultra | Nano Banana Pro | Gemini 3 Pro Image |
+
+Dazu FLUX.1 Kontext und Seedream V4 als Alternativen. Welches Modell hinter
+welcher Stufe läuft, wird im Verbinden-Dialog gewählt.
+
+Guthaben wird bei fal vorab aufgeladen — auch von jemand anderem als dem
+Nutzer der App.
+
+**Hinweis zur Unabhängigkeit:** Ein einzelner Anbieter ist wieder ein einzelner
+Ausfallpunkt. Der Sinn der Abstraktion ist, dass ein zweiter Schlüssel
+jederzeit dazukommen kann und die Pipeline bei Ausfall automatisch wechselt.
+
 ## Was noch offen ist
 
 - Aufträge in IndexedDB sichern, damit ein Reload den Stapel nicht verliert

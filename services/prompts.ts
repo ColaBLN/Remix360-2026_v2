@@ -1,4 +1,4 @@
-import type { TaskKind } from './providers/types';
+import type { PromptStyle, TaskKind } from './providers/types';
 
 export type Tageszeit =
   | 'Original' | 'Sunrise' | 'Mittags' | 'Nachmittags' | 'Sundown' | 'Nacht'
@@ -49,6 +49,10 @@ const INVARIANTS = [
   'Do not add, remove or move structural elements.',
   'Do not add people, faces, licence plates, house numbers or readable signage.',
   'Preserve material identity: brick stays brick, render stays render, wood grain stays wood grain.',
+  // Ohne diese Zeile legen die Modelle gern einen globalen Orange- oder
+  // Sepiafilter über das ganze Bild. Genau das lässt Ergebnisse unecht wirken.
+  'Do not apply a global colour grade, tint, filter or bloom to the whole frame. White stays white.',
+  'Keep the result within the range a competent photographer could achieve on location. When in doubt, do less.',
   'Photorealistic result. No HDR halos, no oversaturation, no plastic sheen. It must read as a photograph.',
 ].join(' ');
 
@@ -167,13 +171,20 @@ export function exteriorPrompt(tageszeit: Tageszeit, o: OptimizationOptions): st
 
 const INTERIOR_LIGHT: Record<string, string> = {
   Intensiv:
-    'Strong warm golden sunlight streaming visibly through the windows, with a gentle Tyndall effect ' +
-    'and bright sharp light pools on floor and furniture. This is the defining feature of the image.',
-  Subtil: 'Soft bright natural daylight filling the room evenly, gentle light pools, low contrast.',
+    'Direct afternoon sunlight enters through the existing windows at an angle consistent with their ' +
+    'position. It lands as clearly defined, bright pools on floor and furniture, with crisp shadow edges. ' +
+    'Only those directly lit patches are warm. Walls, ceiling, textiles and furniture keep their original ' +
+    'colour and neutral white balance everywhere else. No haze, no visible light rays, no golden wash ' +
+    'over the room.',
+  Subtil:
+    'Soft even daylight from the windows. Gentle, low-contrast illumination with barely defined light ' +
+    'pools and open shadows. Neutral white balance throughout.',
   ShallowSun:
-    'Bright daylight with shallow penetration: crisp light pools near the windows only, ' +
-    'falling off quickly towards the back of the room.',
-  Normal: 'Bright balanced natural lighting with readable light pools and soft realistic shadows.',
+    'Daylight with shallow penetration: defined light pools on the floor within roughly one to two metres ' +
+    'of the windows, falling off quickly towards the back of the room, which stays in soft ambient light.',
+  Normal:
+    'Bright, balanced daylight. Readable light pools on the floor, soft realistic shadows, ' +
+    'neutral white balance, open shadow detail.',
 };
 
 export function interiorPrompt(variation: Tageszeit, o: OptimizationOptions): string {
@@ -256,7 +267,44 @@ export function customPrompt(userPrompt: string): string {
   ]);
 }
 
+/**
+ * Kurzfassung für instruktionsbasierte Editoren wie FLUX Kontext und Seedream.
+ *
+ * Diese Modelle gewichten die ersten Sätze am stärksten. Bekommen sie unseren
+ * vollständigen Constraint-Block, überwiegt das Verbotene die Anweisung und am
+ * Bild passiert sichtbar nichts – genau das Verhalten, das im Eco-Modus auffiel.
+ */
+const CONCISE_INVARIANTS =
+  'Keep architecture, perspective and materials unchanged. Photorealistic, no global colour tint.';
+
+function condense(full: string): string {
+  const instruction = full
+    .split('\n')
+    .filter(line => !line.startsWith('Constraints:'))
+    .join(' ')
+    .replace(/^Task:\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // Auf die ersten beiden Sätze kürzen, danach die Kurz-Randbedingungen.
+  const sentences = instruction.split(/(?<=\.)\s+/).slice(0, 3).join(' ');
+  return `${sentences} ${CONCISE_INVARIANTS}`;
+}
+
 export function buildPrompt(
+  task: TaskKind,
+  ctx: {
+    tageszeit?: Tageszeit;
+    options?: OptimizationOptions;
+    roomType?: RoomType;
+    userPrompt?: string;
+    style?: PromptStyle;
+  }
+): string {
+  const full = buildStructuredPrompt(task, ctx);
+  return ctx.style === 'concise' ? condense(full) : full;
+}
+
+function buildStructuredPrompt(
   task: TaskKind,
   ctx: {
     tageszeit?: Tageszeit;

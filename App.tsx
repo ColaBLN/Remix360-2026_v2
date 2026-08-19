@@ -7,7 +7,8 @@ import { ImageSelection, StagingConfigMap } from './components/ImageSelection';
 import { runEditJob, type PipelineSettings } from './services/pipeline';
 import { runPool } from './services/queue';
 import {
-  connectedProviders, getKey, PROVIDERS, setKey,
+  connectedProviders, getSelectedModelId, modelsForQuality, PROVIDERS,
+  setKey, setSelectedModelId,
   type ProviderId, type Quality, type TaskKind,
 } from './services/providers';
 import { DEFAULT_OPTIONS, type OptimizationOptions, type Tageszeit } from './services/prompts';
@@ -68,6 +69,8 @@ const App: React.FC = () => {
   const [keyProvider, setKeyProvider] = useState<ProviderId>('gemini');
   const [keyDraft, setKeyDraft] = useState('');
   const [connected, setConnected] = useState<ProviderId[]>(() => connectedProviders());
+  /** Nur um nach einer Modellwahl neu zu zeichnen. */
+  const [modelChoiceTick, setModelChoiceTick] = useState(0);
 
   const [watermarkLogo, setWatermarkLogo] = useState<string | null>(
     () => safeLocalStorage.getItem('watermark_logo')
@@ -87,7 +90,7 @@ const App: React.FC = () => {
     budgetEur: budgetLimit,
     smartRouting,
     useCache: true,
-  }), [modelProfile, connected, monthlyUsage, budgetLimit, smartRouting]);
+  }), [modelProfile, connected, monthlyUsage, budgetLimit, smartRouting, modelChoiceTick]);
 
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
@@ -502,6 +505,41 @@ const App: React.FC = () => {
               <li>Das Budget oben rechts begrenzt den Verbrauch pro Monat.</li>
               <li>Identische Wiederholungen kommen aus dem Zwischenspeicher und kosten nichts.</li>
             </ul>
+
+            {connected.length > 0 && (
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-bold text-gray-700">Modell pro Stufe</p>
+                {(['eco', 'hd', 'ultra'] as Quality[]).map(quality => {
+                  const options = modelsForQuality(quality);
+                  if (options.length === 0) return null;
+                  const selected = getSelectedModelId(quality) ?? options[0].id;
+                  const label = { eco: '🌱 Eco', hd: '⚡ HD', ultra: '👑 Ultra' }[quality];
+                  return (
+                    <label key={quality} className="flex items-center gap-3 text-xs">
+                      <span className="w-16 flex-shrink-0 font-semibold text-gray-600">{label}</span>
+                      <select
+                        value={selected}
+                        onChange={e => {
+                          setSelectedModelId(quality, e.target.value);
+                          setModelChoiceTick(t => t + 1);
+                        }}
+                        className="flex-1 bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs font-medium text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                      >
+                        {options.map(m => (
+                          <option key={m.id} value={m.id}>
+                            {m.label} · ca. {(m.costUsd * 0.92).toFixed(3)} €
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  );
+                })}
+                <p className="text-[10px] text-gray-500 leading-relaxed">
+                  Nano Banana ist Googles Bildmodell auf fal-Infrastruktur – dieselbe Familie wie der
+                  direkte Gemini-Zugang, nur über einen anderen Schlüssel.
+                </p>
+              </div>
+            )}
 
             <label className="flex items-center gap-3 text-xs text-gray-600 bg-gray-50 rounded-xl p-4 cursor-pointer">
               <input

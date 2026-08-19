@@ -64,19 +64,22 @@ export async function runEditJob(
   const route = resolveRoute(routeCtx);
   if (route.note) onNote?.(route.note);
 
-  const prompt = buildPrompt(input.task, {
-    tageszeit: input.tageszeit,
-    options: input.options,
-    roomType: input.roomType,
-    userPrompt: input.userPrompt,
-  });
-
   const prepared = await prepareImage(input.source, route.model.uploadMaxEdge);
 
   const chain: ModelDescriptor[] = [route.model, ...fallbacksFor(route.model, settings.providerOrder)];
   let lastError: unknown;
 
   for (const model of chain) {
+    // Der Prompt-Stil hängt am Modell: Gemini-artige Modelle bekommen die
+    // gegliederte Fassung, instruktionsbasierte Editoren die Kurzform.
+    const prompt = buildPrompt(input.task, {
+      tageszeit: input.tageszeit,
+      options: input.options,
+      roomType: input.roomType,
+      userPrompt: input.userPrompt,
+      style: model.promptStyle,
+    });
+
     const cacheKey = await hashRequest([prepared.base64, prompt, model.id, prepared.aspectRatio]);
 
     if (settings.useCache) {
