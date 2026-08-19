@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * animate-fade-in wurde überall im Markup verwendet, war aber nirgends
+ * definiert – weder in dieser Datei noch in der Tailwind-CDN-Konfiguration.
+ * Die Klasse hat schlicht nichts getan.
+ */
+@layer utilities {
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.25s ease-out both;
+  }
+  @keyframes fadeInFast {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .animate-fade-in-fast {
+    animation: fadeInFast 0.2s ease-out both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-in-fast {
+    animation: none;
+  }
+}

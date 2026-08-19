@@ -1,0 +1,6 @@
+{
+  "name": "Remix360Pro",
+  "description": "Laden Sie mehrere Bilder hoch, und die KI verwandelt sie in professionelle Aufnahmen mit perfektem Sonnenschein, korrigierter Perspektive und unkenntlichen Kennzeichen. Die Ergebnisse erscheinen in einer Galerie.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
