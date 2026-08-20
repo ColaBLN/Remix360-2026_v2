@@ -75,6 +75,7 @@ export const FAL_MODELS: ModelDescriptor[] = [
     nativeId: 'fal-ai/nano-banana-2/edit',
     label: 'Nano Banana 2',
     quality: 'hd',
+    // 0.08 bei 1K, Faktor 1.5 für 2K.
     costUsd: 0.12,
     uploadMaxEdge: 2048,
     promptStyle: 'structured',
@@ -97,7 +98,9 @@ export const FAL_MODELS: ModelDescriptor[] = [
     nativeId: 'fal-ai/nano-banana-pro/edit',
     label: 'Nano Banana Pro (Gemini 3 Pro Image)',
     quality: 'ultra',
-    costUsd: 0.24,
+    // 1K und 2K fallen bei Pro unter dieselbe Standardrate – 2K kostet also
+    // nichts extra. Erst 4K verdoppelt auf 0.30.
+    costUsd: 0.15,
     uploadMaxEdge: 2048,
     promptStyle: 'structured',
     supports: { outpaint: true, aspectRatio: true },

@@ -52,7 +52,8 @@ const INVARIANTS = [
   // Ohne diese Zeile legen die Modelle gern einen globalen Orange- oder
   // Sepiafilter über das ganze Bild. Genau das lässt Ergebnisse unecht wirken.
   'Do not apply a global colour grade, tint, filter or bloom to the whole frame. White stays white.',
-  'Keep the result within the range a competent photographer could achieve on location. When in doubt, do less.',
+  'Restraint applies to structure, materials and colour. It does not apply to lighting: ' +
+    'the lighting improvement must be clearly visible when compared to the source image.',
   'Photorealistic result. No HDR halos, no oversaturation, no plastic sheen. It must read as a photograph.',
 ].join(' ');
 
@@ -141,12 +142,13 @@ export function exteriorPrompt(tageszeit: Tageszeit, o: OptimizationOptions): st
   }
   if (o.fügeSonneMitLensflaresHinzu) {
     lines.push(
-      'Sunlight: strong directional sunlight with one restrained, optically plausible lens flare ' +
-      'originating from the actual sun position.'
+      'Sunlight: strong direct sunlight with clearly brightened sunlit surfaces and defined shadows, ' +
+      'plus one restrained, optically plausible lens flare originating from the actual sun position.'
     );
   } else if (o.fügeSonneHinzu) {
     lines.push(
-      'Sunlight: add directional sunlight consistent with the shadow directions already visible in the source.'
+      'Sunlight: the scene is lit by direct sunlight. Surfaces facing the sun are clearly brighter and cast ' +
+      'defined shadows, consistent with the shadow directions already visible in the source.'
     );
   }
   if (o.verbessereRasen) {
@@ -171,20 +173,23 @@ export function exteriorPrompt(tageszeit: Tageszeit, o: OptimizationOptions): st
 
 const INTERIOR_LIGHT: Record<string, string> = {
   Intensiv:
-    'Direct afternoon sunlight enters through the existing windows at an angle consistent with their ' +
-    'position. It lands as clearly defined, bright pools on floor and furniture, with crisp shadow edges. ' +
-    'Only those directly lit patches are warm. Walls, ceiling, textiles and furniture keep their original ' +
-    'colour and neutral white balance everywhere else. No haze, no visible light rays, no golden wash ' +
-    'over the room.',
+    'Sunlight shines directly through the windows and is the defining feature of the image. It must land ' +
+    'as large, bright, clearly defined pools of light on the floor and across the furniture, with crisp ' +
+    'shadow edges. One faint, restrained shaft of light in the air is welcome where the beam is strongest. ' +
+    'Only the directly sunlit patches are warm; every surface not in direct sun keeps its original colour ' +
+    'and a neutral white balance. The room must read as markedly brighter and more inviting than the source.',
   Subtil:
-    'Soft even daylight from the windows. Gentle, low-contrast illumination with barely defined light ' +
-    'pools and open shadows. Neutral white balance throughout.',
+    'Soft daylight fills the room through the windows. Gentle but clearly visible pools of light reach the ' +
+    'floor, shadows stay open and low in contrast. The room must read as brighter and friendlier than the ' +
+    'source, achieved through light rather than through a warm filter.',
   ShallowSun:
-    'Daylight with shallow penetration: defined light pools on the floor within roughly one to two metres ' +
-    'of the windows, falling off quickly towards the back of the room, which stays in soft ambient light.',
+    'Sunlight enters through the windows and forms bright, clearly defined pools on the floor within roughly ' +
+    'one to two metres of the glass, falling off towards the back of the room, which stays in soft ambient ' +
+    'light. The lit zone near the windows must be unmistakable.',
   Normal:
-    'Bright, balanced daylight. Readable light pools on the floor, soft realistic shadows, ' +
-    'neutral white balance, open shadow detail.',
+    'Daylight enters through the windows and forms visible, clearly readable pools of light on the floor. ' +
+    'The room must read as noticeably brighter, friendlier and more open than the source, with shadow ' +
+    'detail lifted in corners and under furniture. The brightening comes from light, not from a warm tint.',
 };
 
 export function interiorPrompt(variation: Tageszeit, o: OptimizationOptions): string {

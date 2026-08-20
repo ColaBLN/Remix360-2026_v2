@@ -4,6 +4,15 @@ Bildbearbeitung für Immobilienfotos. React + TypeScript + Vite, läuft komplett
 im Browser. Jeder Nutzer hinterlegt seinen eigenen API-Schlüssel — dem Betreiber
 entstehen keine Kosten.
 
+## Version
+
+Die Nummer im Header kommt aus `package.json` und wird beim Bauen eingesetzt
+(`__APP_VERSION__` in `vite.config.ts`). Sie kann deshalb nicht vom
+tatsächlichen Stand abweichen. Mit dem Mauszeiger über der Nummer erscheint
+zusätzlich das Build-Datum.
+
+Bei jeder Änderung nur `version` in `package.json` hochzählen — sonst nichts.
+
 ## Lokal starten
 
 ```bash
@@ -13,7 +22,61 @@ npm run dev
 
 `npm run build` prüft zuerst die Typen und baut dann nach `dist/`.
 
-## Was in dieser Fassung repariert wurde
+## Änderungen
+
+### 4.1.2
+
+- **Preis für Nano Banana Pro war zu hoch angesetzt** (0,24 statt 0,15 USD).
+  Die Kostenanzeige und die Budgetgrenze haben dadurch zu viel gerechnet.
+
+#### Auflösung und Preis auf fal, Stand August 2026
+
+| Modell | 1K | 2K | 4K |
+|---|---|---|---|
+| Nano Banana 2 | $0.08 | $0.12 | $0.16 |
+| Nano Banana Pro | $0.15 | $0.15 | $0.30 |
+
+Bei Pro fallen 1K und 2K unter dieselbe Standardrate — 2K kostet also nichts
+extra, erst 4K verdoppelt. Bei Nano Banana 2 kostet 2K das 1,5-fache.
+
+Die App fährt bewusst 2K. Für Portale wie ImmoScout24 ist 4K verschenkt, weil
+dort ohnehin herunterskaliert wird; sinnvoll ist es nur für Druck.
+
+### 4.1.1
+
+- **Sonnenlicht bei Innenaufnahmen kam zu selten durchs Fenster.** Die
+  Realismus-Korrektur aus 4.1.0 war zu breit angelegt: die Randbedingung
+  "im Zweifel weniger" galt pauschal und hat auch die Beleuchtung gedämpft,
+  und bei *Intensive Sonne* waren sichtbare Lichtstrahlen ausdrücklich
+  verboten. Zurückhaltung gilt jetzt nur noch für Struktur, Material und
+  Farbe. Die Lichtwirkung ist als geforderte Wirkung formuliert und steht im
+  Prompt an erster Stelle — was doppelt zählt, weil die Kurzfassung für
+  FLUX und Seedream nur die ersten Sätze behält. Die Farbdisziplin bleibt:
+  hell wird der Raum durch Licht, nicht durch einen Warmfilter.
+
+### 4.1.0
+
+- **fal-Fehler 422 bei HD und Ultra behoben.** Für alle fal-Modelle wurde
+  `image_url` gesendet. Nur FLUX Kontext erwartet das; Seedream und die
+  Nano-Banana-Familie erwarten `image_urls` als Array, Seedream zusätzlich
+  `image_size` statt `aspect_ratio`. Jedes Modell hat jetzt seine eigene
+  Eingabeform (`SHAPES` in `services/providers/fal.ts`).
+- **Eco erzeugte sichtbar keine Änderung.** Das war kein Fehler, sondern FLUX
+  Kontext: Das Modell folgt kurzen Anweisungen und gewichtet die ersten Sätze
+  am stärksten, unser Prompt bestand aber überwiegend aus Verboten. Modelle
+  tragen jetzt einen `promptStyle`; instruktionsbasierte Editoren bekommen eine
+  Kurzfassung.
+- **Intensive Sonne wirkte unecht.** Der Prompt verlangte einen Raum
+  „geflutet mit goldener Sonne", was zu einem globalen Sepiastich führte. Jetzt
+  sind nur die direkt besonnten Flächen warm, alles andere behält neutralen
+  Weißabgleich. Global ergänzt: kein Farbfilter über das ganze Bild.
+- **Modellauswahl pro Stufe** im Verbinden-Dialog, inklusive der Google-Modelle
+  über fal (Nano Banana).
+- Versionsnummer im Header kommt aus `package.json`.
+
+### 4.0.0
+
+Umbau auf Anbieter-Abstraktion. Was dabei repariert wurde:
 
 **Seitenverhältnis war fest auf 16:9.** In `callGeminiApi` stand
 `aspectRatio: "16:9"` für jede Aufgabe. Jedes 4:3- oder Hochkantfoto wurde

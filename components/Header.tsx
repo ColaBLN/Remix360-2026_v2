@@ -86,8 +86,11 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="text-left">
           <h1 className="text-3xl font-extrabold text-brand-blue tracking-wide flex items-center gap-2">
             Remix<span className="text-brand-yellow font-black">360</span>Pro
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-blue/10 text-brand-blue shadow-inner border border-brand-blue/10">
-              v4.0
+            <span
+              className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-blue/10 text-brand-blue shadow-inner border border-brand-blue/10"
+              title={`Build vom ${__BUILD_DATE__}`}
+            >
+              v{__APP_VERSION__}
             </span>
           </h1>
           <p className="text-sm text-gray-400 mt-1 font-medium">
