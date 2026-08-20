@@ -15,8 +15,6 @@ import { MagicWandIcon } from './icons/MagicWandIcon';
 import { WatermarkIcon } from './icons/WatermarkIcon';
 import { base64ToBlob } from '../utils/fileUtils';
 
-const WATERMARK_URL = "https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=https://lh3.googleusercontent.com/d/1ZVv1CbR_8htQE9yBR03e17xM-QoJ8g1S";
-
 const applyWatermark = (base64Image: string, watermarkUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -112,8 +110,11 @@ export const GalleryItem: React.FC<GalleryItemProps> = ({
     onIntenseSun, onLessSun, onShallowSun, onCustomEdit, onSoftenEdges, watermarkLogo 
 }) => {
     const firstJob = jobs[0];
-    const isInterior = firstJob.imageType === 'interior';
-    const isExterior = firstJob.imageType === 'exterior';
+    const isAuto = firstJob.imageType === 'auto';
+    // In der Automatik steht erst nach der Generierung fest, was das Bild ist.
+    // Deshalb beide Knopfgruppen zeigen – vorher fehlten sie dort komplett.
+    const isInterior = firstJob.imageType === 'interior' || isAuto;
+    const isExterior = firstJob.imageType === 'exterior' || isAuto;
     const hasIntense = jobs.some(j => j.tageszeit === 'Intensiv');
     const hasSubtil = jobs.some(j => j.tageszeit === 'Subtil');
 
@@ -152,11 +153,16 @@ export const GalleryItem: React.FC<GalleryItemProps> = ({
     const handleSaveWithWatermark = async (job: ImageJob) => {
         if (!job.generatedUrl) return;
 
-        // Use uploaded logo if available, otherwise try Drive link
-        const logoToUse = watermarkLogo || WATERMARK_URL;
+        // Vorher lag hier eine fest verdrahtete Google-Drive-Adresse als
+        // Rückfall. Die wird beim Zeichnen auf Canvas praktisch immer von
+        // CORS blockiert, wodurch still ohne Logo gespeichert wurde.
+        if (!watermarkLogo) {
+            alert('Kein Logo hinterlegt. Oben rechts im Kopfbereich unter „🖼️ Logo" eine PNG-Datei hochladen.');
+            return;
+        }
 
         try {
-            const watermarkedBase64 = await applyWatermark(job.generatedUrl, logoToUse);
+            const watermarkedBase64 = await applyWatermark(job.generatedUrl, watermarkLogo);
             const fileName = `optimiert-logo-${firstJob.file.name.split('.')[0]}-${job.tageszeit}.jpg`;
 
             const link = document.createElement('a');
@@ -179,8 +185,8 @@ export const GalleryItem: React.FC<GalleryItemProps> = ({
             <h3 className="text-center text-lg font-semibold mb-3 text-gray-600 truncate" title={firstJob.file.name}>
               Original
             </h3>
-            <div className="aspect-video">
-              <img src={firstJob.originalUrl} alt={firstJob.file.name} className="w-full h-full rounded-lg object-contain border border-gray-200 bg-white" />
+            <div className="w-full">
+              <img src={firstJob.originalUrl} alt={firstJob.file.name} className="w-full h-auto rounded-lg object-contain border border-gray-200 bg-white" />
             </div>
           </div>
           <div className="flex flex-col">
@@ -248,6 +254,15 @@ const ResultCard: React.FC<ResultCardProps> = ({
     onRetry, onRedoWithPro, onRedoWithHD, onZoomOut, onZoomIn, onFurnish, onIntenseSun, onLessSun, onShallowSun, onCustomEdit, onSoftenEdges, onSave, onSaveWithWatermark 
 }) => {
     const [editPrompt, setEditPrompt] = useState("");
+    /** Ergebnis in voller Grösse ansehen – rein visuell, kostet nichts. */
+    const [lightbox, setLightbox] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (!lightbox) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(null); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [lightbox]);
 
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -263,7 +278,7 @@ const ResultCard: React.FC<ResultCardProps> = ({
                 {job.stagingOptions ? `${job.stagingOptions.mode === 'empty' ? 'Raum leer' : job.stagingOptions.roomType}` : tageszeitLabels[job.tageszeit]}
             </h4>
             
-            <div className="aspect-video flex-grow flex justify-center items-center p-1 relative min-h-[160px]">
+            <div className="flex-grow flex justify-center items-center p-1 relative min-h-[160px]">
                 {job.status === 'processing' && (
                     <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10 backdrop-blur-[2px]">
                         <Spinner />
@@ -276,7 +291,14 @@ const ResultCard: React.FC<ResultCardProps> = ({
                     </div>
                 )}
                 {job.status === 'completed' && job.generatedUrl && (
-                    <img src={job.generatedUrl} alt={`Result`} className="w-full h-full object-contain" />
+                    <button
+                        type="button"
+                        onClick={() => setLightbox(job.generatedUrl)}
+                        className="w-full h-full block cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-brand-blue rounded"
+                        title="Groß ansehen"
+                    >
+                        <img src={job.generatedUrl} alt="Ergebnis" className="w-full h-auto object-contain" />
+                    </button>
                 )}
                 {job.status === 'pending' && (
                     <div className="text-gray-400 text-sm p-2 text-center">Wartet...</div>
@@ -296,6 +318,33 @@ const ResultCard: React.FC<ResultCardProps> = ({
             )}
             {job.note && job.status !== 'failed' && (
                 <p className="px-2 pt-1 text-[9px] text-amber-700 leading-snug">{job.note}</p>
+            )}
+
+            {lightbox && (
+                <div
+                    className="fixed inset-0 z-[9998] bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in-fast"
+                    onClick={() => setLightbox(null)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Ergebnis in voller Größe"
+                >
+                    <img
+                        src={lightbox}
+                        alt="Ergebnis in voller Größe"
+                        className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                        onClick={e => e.stopPropagation()}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setLightbox(null)}
+                        className="absolute top-6 right-6 bg-white/90 hover:bg-white text-gray-800 rounded-full p-2 shadow-lg transition-colors"
+                        aria-label="Schließen"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
             )}
 
             {/* Individual Prompt Box */}
@@ -348,16 +397,16 @@ const ResultCard: React.FC<ResultCardProps> = ({
                             <button 
                                 onClick={() => onZoomOut(job.id)}
                                 className="flex-shrink-0 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center"
-                                aria-label="Zoom Out"
-                                title="Zoom Out"
+                                aria-label="Weitwinkel erzeugen"
+                                title="Weitwinkel: Bildausschnitt erweitern (erzeugt ein neues Bild)"
                             >
                                 <ZoomOutIcon className="w-4 h-4" />
                             </button>
                             <button 
                                 onClick={() => onZoomIn(job.id)}
                                 className="flex-shrink-0 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center"
-                                aria-label="Zoom In"
-                                title="Detailaufnahme"
+                                aria-label="Detailaufnahme erzeugen"
+                                title="Detailaufnahme: Nahaufnahme eines Merkmals (erzeugt ein neues Bild)"
                             >
                                 <ZoomInIcon className="w-4 h-4" />
                             </button>

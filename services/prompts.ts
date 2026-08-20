@@ -49,16 +49,44 @@ const INVARIANTS = [
   'Do not add, remove or move structural elements.',
   'Do not add people, faces, licence plates, house numbers or readable signage.',
   'Preserve material identity: brick stays brick, render stays render, wood grain stays wood grain.',
-  // Ohne diese Zeile legen die Modelle gern einen globalen Orange- oder
-  // Sepiafilter über das ganze Bild. Genau das lässt Ergebnisse unecht wirken.
-  'Do not apply a global colour grade, tint, filter or bloom to the whole frame. White stays white.',
+  'Do not apply an arbitrary filter or bloom to the whole frame. Any overall colour cast must come from the stated time of day, nothing else.',
   'Restraint applies to structure, materials and colour. It does not apply to lighting: ' +
     'the lighting improvement must be clearly visible when compared to the source image.',
   'Photorealistic result. No HDR halos, no oversaturation, no plastic sheen. It must read as a photograph.',
 ].join(' ');
 
-function block(task: string, body: Array<string | false | undefined>): string {
-  return [`Task: ${task}.`, ...body.filter(Boolean), `Constraints: ${INVARIANTS}`].join('\n');
+const CONCISE_TAIL =
+  'Keep architecture, perspective and materials unchanged. Photorealistic, no arbitrary filters.';
+
+/**
+ * Eine Anweisung in zwei Längen.
+ *
+ * Frühere Fassung hat für instruktionsbasierte Modelle den fertigen Prompt
+ * nach drei Sätzen abgeschnitten. Dabei fielen genau die Anweisungen weg, die
+ * der Nutzer angeklickt hatte — Belichtung, Rasen, Schnee, Jahreszeit —, und
+ * übrig blieb die Himmelsbeschreibung. Deshalb bewirkte das HD-Modell bei
+ * Außenaufnahmen kaum etwas.
+ *
+ * Kurz heisst jetzt: knapper formuliert, aber inhaltlich vollständig.
+ */
+type Line = string | [full: string, short: string] | false | undefined;
+
+interface PromptSpec {
+  task: string;
+  taskShort?: string;
+  instructions: Line[];
+}
+
+function render(spec: PromptSpec, style: PromptStyle): string {
+  const lines = spec.instructions.filter(Boolean) as Array<string | [string, string]>;
+
+  if (style === 'concise') {
+    // Leere Kurzfassungen bedeuten: in der Kurzform bereits mit abgedeckt.
+    const body = lines.map(l => (Array.isArray(l) ? l[1] : l)).filter(Boolean);
+    return [`${spec.taskShort ?? spec.task}.`, ...body, CONCISE_TAIL].join(' ');
+  }
+  const body = lines.map(l => (Array.isArray(l) ? l[0] : l));
+  return [`Task: ${spec.task}.`, ...body, `Constraints: ${INVARIANTS}`].join('\n');
 }
 
 /* ---------------------------------------------------------------- */
@@ -77,16 +105,17 @@ const SEASON: Record<Exclude<Jahreszeit, 'none'>, string> = {
     'adjust existing foliage to autumn: yellow, deep orange and golden-red tones on the trees and shrubs already present',
 };
 
-function seasonLine(jahreszeit: Jahreszeit | undefined, isInterior: boolean): string | false {
+function seasonLine(jahreszeit: Jahreszeit | undefined, isInterior: boolean): Line {
   if (!jahreszeit || jahreszeit === 'none') return false;
   const where = isInterior
     ? 'in the outdoor view visible through windows and glass doors'
     : 'in the garden, planting and surroundings';
-  return (
+  return [
     `Season: ${SEASON[jahreszeit]}, ${where}. ` +
-    'Change only the state and colour of vegetation that already exists. ' +
-    'Do not add new plants, flower beds, snowbanks or decorative elements.'
-  );
+      'Change only the state and colour of vegetation that already exists. ' +
+      'Do not add new plants, flower beds, snowbanks or decorative elements.',
+    `Season: ${SEASON[jahreszeit]} ${where}, changing only vegetation that already exists.`,
+  ];
 }
 
 /* ---------------------------------------------------------------- */
@@ -99,6 +128,8 @@ interface SkyPreset {
   light: string;
   /** Farbtemperatur in Kelvin. Ohne diese Angabe sahen alle Tageszeiten gleich aus. */
   kelvin: string;
+  /** Alles in einem Satz, für instruktionsbasierte Modelle. */
+  short: string;
   /** true, wenn die Szene keine direkte Sonne hat. */
   noSun?: boolean;
 }
@@ -118,6 +149,8 @@ const SKY: Record<string, SkyPreset> = {
       'which are switched on and pool light on the ground beneath them.',
     kelvin: 'Cool blue ambient light around 8000K, with warm 2700K pools at the light sources.',
     noSun: true,
+    short:
+      'Set the scene at blue hour: deep blue sky, no sunlight or sun shadows, warm 2700K light glowing from the windows and exterior lamps switched on.',
   },
   Sundown: {
     sky: 'a sundown sky with an orange-to-deep-blue gradient and thin wispy clouds near the horizon',
@@ -126,6 +159,8 @@ const SKY: Record<string, SkyPreset> = {
       'of the objects casting them, and run almost horizontally across the ground. Only the upper facade ' +
       'still catches direct light; the lower half is already in shade.',
     kelvin: 'Warm low-angle light around 2800K on the sunlit surfaces, cool blue shade elsewhere.',
+    short:
+      'Set the scene at sundown: orange-to-blue sky, sun just above the horizon, very long near-horizontal shadows, warm 2800K on lit surfaces.',
   },
   Sunrise: {
     sky: 'a clear early-morning sky, pale towards the horizon, with light high clouds catching the first sun',
@@ -133,6 +168,8 @@ const SKY: Record<string, SkyPreset> = {
       'The sun is low in the east. Shadows are long and directional, the air reads clean and slightly cool. ' +
       'Grass and paving may still look damp. Contrast is gentle.',
     kelvin: 'Fresh light around 3500K on lit surfaces, distinctly cooler and cleaner than an evening scene.',
+    short:
+      'Set the scene at early morning: pale clear sky, low eastern sun, long directional shadows, fresh 3500K light, gentle contrast.',
   },
   Mittags: {
     sky: 'a clear blue midday sky, deepest overhead, with a few small fair-weather cumulus clouds',
@@ -141,6 +178,8 @@ const SKY: Record<string, SkyPreset> = {
       'casting them. Roof surfaces are bright, vertical facades comparatively less lit. Contrast is high ' +
       'with crisp shadow edges.',
     kelvin: 'Neutral daylight around 5500K. Whites read as white.',
+    short:
+      'Set the scene at midday: deep blue sky with small cumulus, sun overhead, short compact shadows directly beneath objects, neutral 5500K, crisp contrast.',
   },
   Nachmittags: {
     sky: 'a friendly afternoon sky with soft scattered clouds',
@@ -149,70 +188,99 @@ const SKY: Record<string, SkyPreset> = {
       'about one to two times the height of the objects casting them. The facade facing the sun is ' +
       'noticeably brighter than the others.',
     kelvin: 'Slightly warm light around 4500K, gentler than midday but far from the orange of sundown.',
+    short:
+      'Set the scene in the afternoon: soft scattered clouds, sun at 30-40 degrees, medium directional shadows, slightly warm 4500K.',
   },
   Original: {
     sky: 'a realistic clear blue sky with soft white clouds',
     light:
       'Pleasant daylight with directional sun and clearly defined but not harsh shadows.',
     kelvin: 'Neutral daylight around 5500K.',
+    short:
+      'Pleasant sunny day: clear blue sky with soft clouds, directional sun, defined but not harsh shadows, neutral 5500K.',
   },
 };
 
-export function exteriorPrompt(tageszeit: Tageszeit, o: OptimizationOptions): string {
+export function exteriorPrompt(
+  tageszeit: Tageszeit,
+  o: OptimizationOptions,
+  style: PromptStyle
+): string {
   const preset = SKY[tageszeit] ?? SKY.Original;
-  const lines: Array<string | false> = [];
+  const lines: Line[] = [];
 
-  // Jeder Schalter wirkt jetzt. Vorher landeten von sieben Optionen nur zwei
-  // im Prompt, und "Beautiful weather, blue sky" stand fest verdrahtet drin –
-  // der Himmel wurde also auch getauscht, wenn der Nutzer das abgewählt hatte.
   if (o.verbessereWetter) {
-    lines.push(`Sky: replace with ${preset.sky}.`);
-    lines.push(`Sun and shadows: ${preset.light}`);
-    lines.push(`Colour temperature: ${preset.kelvin} This is the intended look of the chosen time of day, not an unwanted cast.`);
+    lines.push([`Sky: replace with ${preset.sky}.`, preset.short]);
+    lines.push([`Sun and shadows: ${preset.light}`, '']);
+    lines.push([
+      `Colour temperature: ${preset.kelvin} This is the intended look of the chosen time of day, not an unwanted cast.`,
+      '',
+    ]);
   } else {
-    lines.push('Sky and weather: keep exactly as in the source image. Do not replace the sky.');
+    lines.push([
+      'Sky and weather: keep exactly as in the source image. Do not replace the sky.',
+      'Keep the existing sky and weather unchanged.',
+    ]);
   }
 
   if (o.verbessereHelligkeitKontrast) {
-    lines.push('Exposure: lift shadows, recover blown highlights, set a clean black point.');
+    lines.push([
+      'Exposure: lift shadows, recover blown highlights, set a clean black point.',
+      'Lift shadows and recover blown highlights.',
+    ]);
   }
   if (o.verbessereFarbe) {
-    // Früher stand hier pauschal "neutral white balance, remove colour casts".
-    // Das hat die Farbstimmung von Sonnenaufgang, Dämmerung und Nacht wieder
-    // eingeebnet, weshalb alle Tageszeiten ähnlich aussahen.
     lines.push(
       o.verbessereWetter
-        ? 'Colour: clean, material-safe saturation. Keep the colour temperature stated above; do not neutralise it.'
-        : 'Colour: neutral white balance, natural material-safe saturation, remove colour casts.'
+        ? [
+            'Colour: clean, material-safe saturation. Keep the colour temperature stated above; do not neutralise it.',
+            'Clean natural saturation, keeping the stated colour temperature.',
+          ]
+        : [
+            'Colour: neutral white balance, natural material-safe saturation, remove colour casts.',
+            'Neutral white balance, natural saturation.',
+          ]
     );
   }
+
   if (preset.noSun) {
     // Sonnenoptionen ergeben nachts keinen Sinn und würden dem Preset widersprechen.
   } else if (o.fügeSonneMitLensflaresHinzu) {
-    lines.push(
+    lines.push([
       'Sunlight: strong direct sunlight with clearly brightened sunlit surfaces and defined shadows, ' +
-      'plus one restrained, optically plausible lens flare originating from the actual sun position.'
-    );
+        'plus one restrained, optically plausible lens flare originating from the actual sun position.',
+      'Strong direct sunlight with defined shadows and one subtle lens flare from the sun position.',
+    ]);
   } else if (o.fügeSonneHinzu) {
-    lines.push(
+    lines.push([
       'Sunlight: the scene is lit by direct sunlight. Surfaces facing the sun are clearly brighter and cast ' +
-      'defined shadows, consistent with the shadow directions already visible in the source.'
-    );
-  }
-  if (o.verbessereRasen) {
-    lines.push('Lawn and planting: healthy, evenly mown, natural green. No artificial turf look.');
+        'defined shadows, consistent with the shadow directions already visible in the source.',
+      'Light the scene with direct sun: sunlit faces clearly brighter, shadows defined.',
+    ]);
   }
 
-  // Schnee entfernen und Winter widersprechen sich – Schnee gewinnt.
+  if (o.verbessereRasen) {
+    lines.push([
+      'Lawn and planting: healthy, evenly mown, natural green. No artificial turf look.',
+      'Lawn healthy and evenly green, not artificial.',
+    ]);
+  }
+
   const snowWins = o.entferneSchnee;
   lines.push(
     snowWins
-      ? 'Snow: remove all snow from ground, roof and vegetation. Replace with green lawn, clean paving and summer foliage.'
-      : 'Snow: if snow is present in the source, keep it.'
+      ? [
+          'Snow: remove all snow from ground, roof and vegetation. Replace with green lawn, clean paving and summer foliage.',
+          'Remove all snow; green lawn, clean paving, summer foliage instead.',
+        ]
+      : ['Snow: if snow is present in the source, keep it.', 'Keep any snow that is present.']
   );
   if (!snowWins) lines.push(seasonLine(o.jahreszeit, false));
 
-  return block('Real estate exterior retouching', lines);
+  return render(
+    { task: 'Real estate exterior retouching', taskShort: 'Retouch this real estate exterior photo', instructions: lines },
+    style
+  );
 }
 
 /* ---------------------------------------------------------------- */
@@ -240,36 +308,44 @@ const INTERIOR_LIGHT: Record<string, string> = {
     'detail lifted in corners and under furniture. The brightening comes from light, not from a warm tint.',
 };
 
-export function interiorPrompt(variation: Tageszeit, o: OptimizationOptions): string {
-  return block('Interior lighting enhancement', [
-    `Lighting: ${INTERIOR_LIGHT[variation] ?? INTERIOR_LIGHT.Normal}`,
-    'Windows: keep the view through the windows plausible. Do not blow it out to pure white.',
-    o.verbessereHelligkeitKontrast &&
-      'Exposure: open up shadow detail in corners and under furniture without flattening the image.',
-    o.verbessereFarbe &&
-      'Colour: neutral white balance. Remove the cast typical of mixed tungsten and daylight.',
-    seasonLine(o.jahreszeit, true),
-  ]);
+export function interiorPrompt(
+  variation: Tageszeit,
+  o: OptimizationOptions,
+  style: PromptStyle
+): string {
+  return render({
+    task: 'Interior lighting enhancement',
+    taskShort: 'Improve the lighting in this interior photo',
+    instructions: [
+      `Lighting: ${INTERIOR_LIGHT[variation] ?? INTERIOR_LIGHT.Normal}`,
+      'Windows: keep the view through the windows plausible. Do not blow it out to pure white.',
+      o.verbessereHelligkeitKontrast &&
+        'Exposure: open up shadow detail in corners and under furniture without flattening the image.',
+      o.verbessereFarbe &&
+        'Colour: neutral white balance. Remove the cast typical of mixed tungsten and daylight.',
+      seasonLine(o.jahreszeit, true),
+    ],
+  }, style);
 }
 
 /* ---------------------------------------------------------------- */
 /* Staging, Detail, Einzeloperationen                                */
 /* ---------------------------------------------------------------- */
 
-export function stagingPrompt(mode: StagingMode, roomType: RoomType): string {
+export function stagingPrompt(mode: StagingMode, roomType: RoomType, style: PromptStyle): string {
   if (mode === 'empty') {
-    return block('Digital decluttering', [
+    return render({ task: 'Digital decluttering', instructions: [
       'Remove all furniture, textiles, appliances and personal objects.',
       'Reconstruct floor, walls and skirting behind removed objects to match the surrounding material exactly.',
       'Keep permanently installed elements: radiators, doors, fitted kitchens, sanitary ware, built-in wardrobes.',
-    ]);
+    ] }, style);
   }
-  return block(`Virtual staging as a ${roomType}`, [
+  return render({ task: `Virtual staging as a ${roomType}`, instructions: [
     'Add contemporary, understated furniture at realistic scale for the visible room dimensions.',
     'Furniture must sit on the floor plane with contact shadows, matching existing light direction and colour temperature.',
     'Leave circulation space. Do not block doors, windows or radiators.',
     'No brand logos and no artwork with recognisable copyrighted imagery.',
-  ]);
+  ] }, style);
 }
 
 const DETAIL_FOCUS: Record<string, string> = {
@@ -283,64 +359,86 @@ const DETAIL_FOCUS: Record<string, string> = {
     'Identify the single most marketable feature already present in the image and focus on it.',
 };
 
-export function detailPrompt(focus: Tageszeit): string {
-  return block('Detail highlight crop', [
+export function detailPrompt(focus: Tageszeit, style: PromptStyle): string {
+  return render({ task: 'Detail highlight crop', instructions: [
     DETAIL_FOCUS[focus] ?? DETAIL_FOCUS.Original,
     'Render only what is actually present in the source. Do not invent a new object.',
     'Keep the original colour palette, material quality and lighting character.',
-  ]);
+  ] }, style);
 }
 
-export function outdoorFurnishPrompt(): string {
-  return block('Outdoor staging', [
+export function outdoorFurnishPrompt(style: PromptStyle): string {
+  return render({ task: 'Outdoor staging', instructions: [
     'Add restrained, realistic outdoor furniture appropriate to the visible surface: terrace, balcony or garden.',
     'Match the existing light direction and add correct contact shadows.',
-  ]);
+  ] }, style);
 }
 
-export function outpaintPrompt(): string {
-  return block('Generative outpainting to a wider frame', [
+export function outpaintPrompt(style: PromptStyle): string {
+  return render({ task: 'Generative outpainting to a wider frame', instructions: [
     'Extend the canvas outwards. New areas must continue existing architecture, materials and light with no seam.',
     'Continue rooflines, fences, paving joints and window rhythm exactly as the geometry implies.',
     'If unsure what lies beyond the frame, extend ground and sky rather than inventing new buildings.',
-  ]);
+  ] }, style);
 }
 
-export function softenPrompt(): string {
-  return block('Lighting cleanup', [
+export function softenPrompt(style: PromptStyle): string {
+  return render({ task: 'Lighting cleanup', instructions: [
     'Soften hard shadow edges and reduce clipped specular hotspots.',
     'Keep the overall light direction and contrast ratio. This is a correction, not a relight.',
-  ]);
+  ] }, style);
 }
 
-export function customPrompt(userPrompt: string): string {
-  return block('Targeted edit requested by the user', [
+export function customPrompt(userPrompt: string, style: PromptStyle): string {
+  return render({ task: 'Targeted edit requested by the user', instructions: [
     `User request: "${userPrompt.trim()}"`,
     'Apply only the requested change. Leave everything else unchanged where possible.',
-  ]);
+  ] }, style);
 }
 
 /**
- * Kurzfassung für instruktionsbasierte Editoren wie FLUX Kontext und Seedream.
+ * Automatik: das Modell entscheidet selbst, ob es ein Innen- oder Außenbild ist.
  *
- * Diese Modelle gewichten die ersten Sätze am stärksten. Bekommen sie unseren
- * vollständigen Constraint-Block, überwiegt das Verbotene die Anweisung und am
- * Bild passiert sichtbar nichts – genau das Verhalten, das im Eco-Modus auffiel.
+ * Bewusst in einem einzigen Aufruf statt mit vorgeschalteter Klassifizierung –
+ * das spart eine zweite Abrechnung pro Bild. Die Entscheidungsregel steht
+ * zuerst, weil Bildmodelle die vorderen Sätze am stärksten gewichten.
  */
-const CONCISE_INVARIANTS =
-  'Keep architecture, perspective and materials unchanged. Photorealistic, no global colour tint.';
+const INTERIOR_TAGESZEITEN: Tageszeit[] = ['Normal', 'Intensiv', 'Subtil', 'ShallowSun'];
 
-function condense(full: string): string {
-  const instruction = full
-    .split('\n')
-    .filter(line => !line.startsWith('Constraints:'))
-    .join(' ')
-    .replace(/^Task:\s*/, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  // Auf die ersten beiden Sätze kürzen, danach die Kurz-Randbedingungen.
-  const sentences = instruction.split(/(?<=\.)\s+/).slice(0, 3).join(' ');
-  return `${sentences} ${CONCISE_INVARIANTS}`;
+export function autoPrompt(
+  tageszeit: Tageszeit,
+  o: OptimizationOptions,
+  style: PromptStyle
+): string {
+  // Die Tageszeit gehört je nach Erkennung in den einen oder anderen Zweig.
+  // Eine Innenraum-Variante wie "Intensive Sonne" würde im Aussen-Zweig
+  // sonst auf das Standard-Preset fallen und umgekehrt.
+  const isInteriorVariant = INTERIOR_TAGESZEITEN.includes(tageszeit);
+  const exterior = exteriorPrompt(isInteriorVariant ? 'Original' : tageszeit, o, 'concise')
+    .replace(CONCISE_TAIL, '').trim();
+  const interior = interiorPrompt(isInteriorVariant ? tageszeit : 'Normal', o, 'concise')
+    .replace(CONCISE_TAIL, '').trim();
+
+  return render({
+    task: 'Real estate photo enhancement with automatic scene detection',
+    taskShort: 'Enhance this real estate photo',
+    instructions: [
+      [
+        'First decide from the image alone whether this photograph was taken indoors or outdoors. ' +
+          'A view of a building from outside, a garden, a facade, a roof or a street is an exterior. ' +
+          'A room, a hallway, a bathroom or a balcony seen from inside the property is an interior. ' +
+          'Then apply exactly one of the two treatments below and ignore the other completely.',
+        'Decide whether this is an interior or an exterior photo, then apply exactly one treatment below.',
+      ],
+      [`IF EXTERIOR — ${exterior}`, `If exterior: ${exterior}`],
+      [`IF INTERIOR — ${interior}`, `If interior: ${interior}`],
+      [
+        'Never mix the two treatments. Never replace a sky that is not visible, and never add ' +
+          'interior lighting effects to an exterior photograph.',
+        'Never mix the two.',
+      ],
+    ],
+  }, style);
 }
 
 export function buildPrompt(
@@ -353,29 +451,18 @@ export function buildPrompt(
     style?: PromptStyle;
   }
 ): string {
-  const full = buildStructuredPrompt(task, ctx);
-  return ctx.style === 'concise' ? condense(full) : full;
-}
-
-function buildStructuredPrompt(
-  task: TaskKind,
-  ctx: {
-    tageszeit?: Tageszeit;
-    options?: OptimizationOptions;
-    roomType?: RoomType;
-    userPrompt?: string;
-  }
-): string {
+  const style: PromptStyle = ctx.style ?? 'structured';
   const o = ctx.options ?? DEFAULT_OPTIONS;
   switch (task) {
-    case 'exterior': return exteriorPrompt(ctx.tageszeit ?? 'Original', o);
-    case 'interior': return interiorPrompt(ctx.tageszeit ?? 'Normal', o);
-    case 'stage-empty': return stagingPrompt('empty', ctx.roomType ?? 'Wohnzimmer');
-    case 'stage-furnish': return stagingPrompt('furnished', ctx.roomType ?? 'Wohnzimmer');
-    case 'detail': return detailPrompt(ctx.tageszeit ?? 'Original');
-    case 'outdoor-furnish': return outdoorFurnishPrompt();
-    case 'outpaint': return outpaintPrompt();
-    case 'soften': return softenPrompt();
-    case 'custom': return customPrompt(ctx.userPrompt ?? '');
+    case 'exterior': return exteriorPrompt(ctx.tageszeit ?? 'Original', o, style);
+    case 'interior': return interiorPrompt(ctx.tageszeit ?? 'Normal', o, style);
+    case 'auto': return autoPrompt(ctx.tageszeit ?? 'Original', o, style);
+    case 'stage-empty': return stagingPrompt('empty', ctx.roomType ?? 'Wohnzimmer', style);
+    case 'stage-furnish': return stagingPrompt('furnished', ctx.roomType ?? 'Wohnzimmer', style);
+    case 'detail': return detailPrompt(ctx.tageszeit ?? 'Original', style);
+    case 'outdoor-furnish': return outdoorFurnishPrompt(style);
+    case 'outpaint': return outpaintPrompt(style);
+    case 'soften': return softenPrompt(style);
+    case 'custom': return customPrompt(ctx.userPrompt ?? '', style);
   }
 }

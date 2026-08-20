@@ -1,7 +1,7 @@
 import { generateUUID } from '../utils/safeStorage';
 import type { RoomType, StagingMode, Tageszeit } from '../services/prompts';
 
-export type ImageType = 'interior' | 'exterior' | 'staging' | 'detail';
+export type ImageType = 'interior' | 'exterior' | 'staging' | 'detail' | 'auto';
 
 export interface ImageJob {
   id: string;

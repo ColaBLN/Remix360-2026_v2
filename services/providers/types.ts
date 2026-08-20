@@ -26,6 +26,8 @@ export type AspectRatio =
 export type TaskKind =
   | 'exterior'
   | 'interior'
+  /** Modell entscheidet selbst, ob innen oder aussen. */
+  | 'auto'
   | 'stage-empty'
   | 'stage-furnish'
   | 'detail'

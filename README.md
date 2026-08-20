@@ -24,6 +24,70 @@ npm run dev
 
 ## Änderungen
 
+### 4.4.0
+
+Ergebnis einer vollständigen Durchsicht.
+
+- **Sparmodus entfernt.** Er senkte HD und Ultra bei Innen- und Außenaufnahmen
+  still auf Eco ab, weil dort eine Aufgaben-Untergrenze auf `eco` stand. Eine
+  bewusst gewählte Stufe wurde damit ignoriert — das war die eigentliche
+  Ursache dafür, dass HD bei Außenaufnahmen nichts bewirkte. Die Modellwahl
+  gilt jetzt immer. Die Budgetgrenze bleibt als Rückfall bestehen und meldet
+  sich sichtbar, wenn sie greift.
+- **Automatik: genau eine Tageszeit.** Vorher waren drei wählbar, was bei
+  Fotos, die als Innenaufnahme erkannt werden, drei Abrechnungen für
+  praktisch dasselbe Ergebnis bedeutete.
+- **Automatik: Folge-Knöpfe fehlten.** Intensive Sonne, Weniger Sonne, Sonne
+  flach, Schatten weicher und Möblieren hingen an `imageType === 'interior'`
+  bzw. `'exterior'`. Bei `'auto'` traf beides nicht zu, die Knöpfe
+  verschwanden. Jetzt sichtbar, und die gewählte Variante landet im richtigen
+  Zweig des Automatik-Prompts.
+- **Wasserzeichen: tote Rückfall-Adresse entfernt.** Ohne eigenes Logo griff
+  eine fest verdrahtete Google-Drive-Adresse, die beim Zeichnen auf Canvas
+  praktisch immer an CORS scheitert — gespeichert wurde dann still ohne Logo.
+  Jetzt ein klarer Hinweis.
+- **Feste 16:9-Rahmen entfernt.** Seit die Bilder ihr Originalformat behalten,
+  bekamen Hochkant- und 4:3-Aufnahmen in der Galerie schwarze Balken.
+
+**Offen:** Das Wasserzeichen wird weiterhin formatfüllend über das gesamte
+Bild gezogen. Bei abweichendem Seitenverhältnis zwischen Overlay und Foto
+verzerrt es. Overlay möglichst im selben Format anlegen wie die Ausgabe.
+
+### 4.3.1
+
+- **Zoom im Detail-Modul bewirkte nichts.** Ob eine Folgeoperation auf dem
+  Original oder auf dem bisherigen Ergebnis arbeitet, wurde aus
+  `task !== taskForJob(job)` geraten. Im Detail-Modul ist Zoom In dieselbe
+  Aufgabe wie der Erstlauf, also lief die Folgeoperation wieder auf der
+  Originaldatei — mit identischem Prompt, Modell und Seitenverhältnis und damit
+  identischem Cache-Schlüssel. Zurück kam das bereits vorhandene Bild. Der
+  Aufrufer gibt jetzt mit `fromResult` explizit an, worauf gearbeitet wird.
+- **Ergebnis groß ansehen.** Klick auf ein Ergebnisbild öffnet es formatfüllend,
+  Escape oder Klick daneben schließt. Rein visuell, kostet nichts.
+- **Lupen eindeutig beschriftet.** Die beiden Symbole erzeugen ein neues Bild
+  (Weitwinkel bzw. Detailaufnahme) und vergrößern nicht die Ansicht — das war
+  aus Symbol und Kurzhinweis nicht erkennbar.
+
+### 4.3.0
+
+- **HD bewirkte bei Außenaufnahmen fast nichts.** Zwei Fehler trafen sich.
+  Erstens fiel die Standardwahl je Stufe auf das *billigste* Modell, also bei
+  HD auf Seedream für $0.04 statt auf Nano Banana 2. Zweitens kürzte die
+  Kurzfassung für instruktionsbasierte Modelle den fertigen Prompt schlicht
+  nach drei Sätzen ab — übrig blieben Titel und Himmelsbeschreibung, während
+  Belichtung, Farbe, Sonne, Rasen, Schnee und Jahreszeit wegfielen. Dazu blieb
+  der Zusatz „no global colour tint" stehen, obwohl die Farbtemperatur, die ihn
+  rechtfertigt, gerade abgeschnitten worden war.
+
+  Anweisungen tragen jetzt eine Lang- und eine Kurzfassung. Kurz heißt knapper
+  formuliert, nicht hinten abgeschnitten — inhaltlich kommt alles an. Die
+  Standardwahl folgt der kuratierten Reihenfolge statt dem Preis.
+- **Automatik-Modul.** Erkennt je Bild selbst, ob es innen oder außen ist:
+  Außenaufnahmen bekommen die gewählte Tageszeit und die angeklickten Optionen,
+  Innenaufnahmen die Standard-Lichtveredelung. Bewusst in einem einzigen Aufruf
+  statt mit vorgeschalteter Klassifizierung, das spart eine zweite Abrechnung
+  pro Bild.
+
 ### 4.2.0
 
 - **Tageszeiten bei Außenaufnahmen sahen sich zu ähnlich.** Drei Ursachen, die

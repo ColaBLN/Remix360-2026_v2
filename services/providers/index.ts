@@ -99,8 +99,9 @@ export function pricingByQuality(): Array<{
   const active = connectedProviders();
   const pool = active.length ? active.flatMap(id => PROVIDERS[id].models) : PROVIDERS.gemini.models;
   return (['eco', 'hd', 'ultra'] as Quality[]).map(quality => {
-    const model = preferredModel(quality)
-      ?? pool.filter(m => m.quality === quality).sort((a, b) => a.costUsd - b.costUsd)[0];
+    // Reihenfolge der Deklaration ist die kuratierte Empfehlung. Vorher wurde
+    // nach Preis sortiert, wodurch HD auf Seedream statt Nano Banana 2 fiel.
+    const model = preferredModel(quality) ?? pool.filter(m => m.quality === quality)[0];
     return {
       quality,
       label: model?.label ?? '—',
@@ -115,26 +116,10 @@ export function pricingByQuality(): Array<{
 /* Routing                                                           */
 /* ---------------------------------------------------------------- */
 
-/**
- * Nicht jede Aufgabe braucht das teuerste Modell. Belichtung und Himmel
- * schafft die Eco-Stufe zuverlässig; Staging und Outpainting profitieren
- * spürbar von der grösseren Variante.
- */
-const TASK_FLOOR: Record<TaskKind, Quality> = {
-  exterior: 'eco',
-  interior: 'eco',
-  soften: 'eco',
-  detail: 'eco',
-  custom: 'eco',
-  'outdoor-furnish': 'hd',
-  'stage-empty': 'hd',
-  'stage-furnish': 'hd',
-  outpaint: 'hd',
-};
-
 const RANK: Record<Quality, number> = { eco: 0, hd: 1, ultra: 2 };
 
 export interface RouteContext {
+  /** Wird für Modell-Fähigkeiten gebraucht, nicht mehr fürs Herabstufen. */
   task: TaskKind;
   preferred: Quality;
   force?: Quality;
@@ -142,7 +127,6 @@ export interface RouteContext {
   /** Beide in EUR, passend zur Budgetauswahl in der Oberfläche. */
   spentEur: number;
   budgetEur: number;
-  smartRouting: boolean;
 }
 
 export interface Route {
@@ -165,12 +149,6 @@ export function resolveRoute(ctx: RouteContext): Route {
   if (ctx.spentEur >= ctx.budgetEur && !ctx.force) {
     target = 'eco';
     note = 'Budgetgrenze erreicht – es läuft die günstigste Stufe.';
-  } else if (ctx.smartRouting && !ctx.force) {
-    const floor = TASK_FLOOR[ctx.task];
-    if (RANK[target] > RANK[floor]) {
-      target = floor;
-      note = 'Diese Aufgabe braucht die teure Stufe nicht.';
-    }
   }
 
   const candidates = [...available].sort((a, b) => RANK[a.quality] - RANK[b.quality]);

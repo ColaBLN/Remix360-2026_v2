@@ -67,11 +67,20 @@ export const Gallery: React.FC<GalleryProps> = ({
 }) => {
   const hasPendingJobs = jobs.some(job => job.status === 'pending');
   const firstType = jobs.length > 0 ? jobs[0].imageType : null;
-  const isExterior = firstType === 'exterior';
+  const isAuto = firstType === 'auto';
+  // Die Automatik zeigt die Aussen-Optionen: Innenaufnahmen laufen dort auf
+  // dem Standard, Aussenaufnahmen brauchen die Auswahl.
+  const isExterior = firstType === 'exterior' || isAuto;
   const isStaging = firstType === 'staging';
   const isDetail = firstType === 'detail';
 
   const toggleTageszeit = (tageszeit: Tageszeit) => {
+    // In der Automatik genau eine Tageszeit: Innenaufnahmen ignorieren sie,
+    // mehrere Varianten würden dort mehrfach abgerechnet ohne Unterschied.
+    if (isAuto) {
+      onTageszeitChange([tageszeit]);
+      return;
+    }
     if (selectedTageszeiten.includes(tageszeit)) {
       onTageszeitChange(selectedTageszeiten.filter(t => t !== tageszeit));
       return;
@@ -110,29 +119,51 @@ export const Gallery: React.FC<GalleryProps> = ({
           {isExterior && (
             <div className="bg-gray-100 p-4 rounded-xl border border-gray-200 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-800 mb-3 text-center">
-                Tageszeit <span className="text-sm font-normal text-gray-500">(max. 3)</span>
+                Tageszeit{' '}
+                <span className="text-sm font-normal text-gray-500">
+                  {isAuto ? '(eine)' : '(max. 3)'}
+                </span>
               </h3>
+              {isAuto && (
+                <p className="text-[11px] text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2 mb-3 leading-relaxed">
+                  Gilt nur für Bilder, die als Außenaufnahme erkannt werden.
+                  Innenaufnahmen laufen automatisch auf „Freundlich &amp; Hell".
+                </p>
+              )}
               <div className="space-y-3">
                 {TAGESZEIT_OPTIONS.map(option => (
                   <label key={option} className="flex items-center space-x-3 cursor-pointer p-2 rounded-md hover:bg-gray-200 transition-colors">
                     <input
-                      type="checkbox"
+                      type={isAuto ? 'radio' : 'checkbox'}
+                      name={isAuto ? 'auto-tageszeit' : undefined}
                       checked={selectedTageszeiten.includes(option)}
                       onChange={() => toggleTageszeit(option)}
-                      disabled={!selectedTageszeiten.includes(option) && selectedTageszeiten.length >= 3}
-                      className="h-5 w-5 rounded border-gray-300 text-brand-blue focus:ring-brand-blue disabled:opacity-50"
+                      disabled={!isAuto && !selectedTageszeiten.includes(option) && selectedTageszeiten.length >= 3}
+                      className={`h-5 w-5 border-gray-300 text-brand-blue focus:ring-brand-blue disabled:opacity-50 ${isAuto ? '' : 'rounded'}`}
                     />
                     <span className="text-gray-700 select-none">{tageszeitLabels[option]}</span>
                   </label>
                 ))}
               </div>
               <p className="text-[10px] text-gray-500 mt-3 text-center leading-relaxed">
-                Jede Auswahl erzeugt ein eigenes Bild und wird einzeln abgerechnet.
+                {isAuto
+                  ? 'Ein Bild pro Foto. Innenaufnahmen ignorieren die Tageszeit.'
+                  : 'Jede Auswahl erzeugt ein eigenes Bild und wird einzeln abgerechnet.'}
               </p>
             </div>
           )}
 
           <div className="space-y-6">
+            {isAuto && (
+              <div className="bg-gray-100 p-4 rounded-xl border border-gray-200 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2 text-center">🪄 Automatik</h3>
+                <p className="text-[11px] text-gray-600 leading-relaxed text-center">
+                  Jedes Bild wird einzeln geprüft: Außenaufnahmen bekommen die hier gewählte
+                  Tageszeit und die Optionen, Innenaufnahmen die Standard-Lichtveredelung.
+                  Am zuverlässigsten mit den Nano-Banana-Modellen.
+                </p>
+              </div>
+            )}
             {isDetail && (
               <div className="bg-gray-100 p-4 rounded-xl border border-gray-200 shadow-sm">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3 text-center">🔍 Detail-Fokus</h3>

@@ -61,9 +61,6 @@ const App: React.FC = () => {
   const [budgetLimit, setBudgetLimit] = useState<number>(
     () => parseFloat(safeLocalStorage.getItem('foto_magic_budget_limit') || '') || 10
   );
-  const [smartRouting, setSmartRouting] = useState<boolean>(
-    () => safeLocalStorage.getItem('remix360.smartRouting') !== 'off'
-  );
 
   const [showKeyEntry, setShowKeyEntry] = useState(false);
   const [keyProvider, setKeyProvider] = useState<ProviderId>('gemini');
@@ -88,9 +85,8 @@ const App: React.FC = () => {
     providerOrder: connected.length ? connected : (['gemini', 'fal'] as ProviderId[]),
     spentEur: calculateCosts(monthlyUsage),
     budgetEur: budgetLimit,
-    smartRouting,
     useCache: true,
-  }), [modelProfile, connected, monthlyUsage, budgetLimit, smartRouting, modelChoiceTick]);
+  }), [modelProfile, connected, monthlyUsage, budgetLimit, modelChoiceTick]);
 
   const settingsRef = useRef(settings);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
@@ -108,6 +104,7 @@ const App: React.FC = () => {
     }
     if (job.imageType === 'interior') return 'interior';
     if (job.imageType === 'detail') return 'detail';
+    if (job.imageType === 'auto') return 'auto';
     return 'exterior';
   };
 
@@ -115,6 +112,7 @@ const App: React.FC = () => {
     switch (task) {
       case 'interior': return `Innenraum-Veredelung (${job.tageszeit})`;
       case 'exterior': return `Außenbereich (Tageszeit: ${job.tageszeit})`;
+      case 'auto': return `Automatik (Tageszeit: ${job.tageszeit})`;
       case 'stage-empty': return `Digital Staging (Raum leeren)`;
       case 'stage-furnish': return `Digital Staging (Möblieren als ${job.stagingOptions?.roomType ?? ''})`;
       case 'detail': return `Detail-Nahaufnahme (${job.tageszeit})`;
@@ -128,14 +126,25 @@ const App: React.FC = () => {
   const process = useCallback(async (
     job: ImageJob,
     task: TaskKind,
-    opts: { source?: Blob; force?: Quality; userPrompt?: string; signal?: AbortSignal } = {}
+    opts: {
+      source?: Blob;
+      force?: Quality;
+      userPrompt?: string;
+      signal?: AbortSignal;
+      /** Folgeoperation: arbeitet auf dem bisherigen Ergebnis statt auf der Datei. */
+      fromResult?: boolean;
+    } = {}
   ) => {
     dispatch({ type: 'patch', id: job.id, patch: { status: 'processing', error: undefined, note: undefined } });
 
     try {
-      // Folgeschritte arbeiten auf dem Ergebnis, Erstläufe auf der Datei.
+      // Vorher wurde aus "task !== taskForJob(job)" geraten, ob auf dem
+      // Ergebnis gearbeitet wird. Im Detail-Modul war Zoom In dieselbe Aufgabe
+      // wie der Erstlauf – die Folgeoperation lief also wieder auf dem
+      // Original, mit identischem Cache-Schlüssel, und lieferte sichtbar
+      // dasselbe Bild zurück. Jetzt sagt der Aufrufer es explizit.
       let source: Blob = opts.source ?? job.file;
-      if (!opts.source && job.generatedUrl && task !== taskForJob(job)) {
+      if (opts.fromResult && job.generatedUrl) {
         const { base64, mimeType } = fromDataUrl(job.generatedUrl);
         source = await (await fetch(toDataUrl(base64, mimeType))).blob();
       }
@@ -250,7 +259,7 @@ const App: React.FC = () => {
 
     // Außenaufnahmen starten erst auf Knopfdruck, damit die Wetteroptionen
     // vorher gesetzt werden können.
-    if (selectedType !== 'exterior') void processBatch(newJobs);
+    if (selectedType !== 'exterior' && selectedType !== 'auto') void processBatch(newJobs);
   };
 
   const handleTageszeitChange = (newSelection: Tageszeit[]) => {
@@ -304,7 +313,7 @@ const App: React.FC = () => {
   const followUp = useCallback((jobId: string, task: TaskKind, userPrompt?: string) => {
     const job = byId(jobId);
     if (!job?.generatedUrl) return;
-    void process(job, task, { userPrompt });
+    void process(job, task, { userPrompt, fromResult: true });
   }, [process]);
 
   const handleZoomOut = useCallback((id: string) => followUp(id, 'outpaint'), [followUp]);
@@ -398,6 +407,8 @@ const App: React.FC = () => {
       styles: 'border-purple-500 text-purple-600 hover:bg-purple-50' },
     { type: 'detail', icon: '🔍', title: 'Zoom & Detail', subtitle: 'Findet & fokussiert Highlights',
       styles: 'border-emerald-500 text-emerald-600 hover:bg-emerald-50' },
+    { type: 'auto', icon: '🪄', title: 'Automatik', subtitle: 'Erkennt innen oder außen selbst',
+      styles: 'border-gray-800 text-gray-800 hover:bg-gray-100' },
   ];
 
   const renderContent = () => {
@@ -541,21 +552,6 @@ const App: React.FC = () => {
               </div>
             )}
 
-            <label className="flex items-center gap-3 text-xs text-gray-600 bg-gray-50 rounded-xl p-4 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={smartRouting}
-                onChange={e => {
-                  setSmartRouting(e.target.checked);
-                  safeLocalStorage.setItem('remix360.smartRouting', e.target.checked ? 'on' : 'off');
-                }}
-                className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue"
-              />
-              <span>
-                <strong className="text-gray-800">Sparmodus</strong> – einfache Aufgaben wie Belichtung
-                und Himmel laufen automatisch auf der günstigsten Stufe.
-              </span>
-            </label>
 
             {hasApiKey && (
               <button
@@ -576,7 +572,7 @@ const App: React.FC = () => {
           <div className="w-full max-w-4xl mx-auto text-center animate-fade-in">
             <h2 className="text-2xl font-bold text-brand-blue mb-4">Was möchten Sie tun?</h2>
             <p className="text-gray-600 mb-8">Wählen Sie das passende Modul für Ihre Immobilienfotos.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
               {MODULES.map(m => (
                 <button
                   key={m.type}

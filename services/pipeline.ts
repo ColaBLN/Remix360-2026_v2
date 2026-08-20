@@ -37,7 +37,6 @@ export interface PipelineSettings {
   providerOrder: ProviderId[];
   spentEur: number;
   budgetEur: number;
-  smartRouting: boolean;
   useCache: boolean;
 }
 
@@ -58,7 +57,6 @@ export async function runEditJob(
     providerOrder: settings.providerOrder,
     spentEur: settings.spentEur,
     budgetEur: settings.budgetEur,
-    smartRouting: settings.smartRouting,
   };
 
   const route = resolveRoute(routeCtx);
