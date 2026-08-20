@@ -24,6 +24,25 @@ npm run dev
 
 ## Änderungen
 
+### 4.2.0
+
+- **Tageszeiten bei Außenaufnahmen sahen sich zu ähnlich.** Drei Ursachen, die
+  zusammenwirkten: Die Presets unterschieden sich nur in der Himmel-
+  beschreibung, ohne Sonnenstand oder Schattenlänge. Die standardmäßig aktive
+  Option „Farbe verbessern" forderte pauschal neutralen Weißabgleich und hat
+  die Farbstimmung von Sonnenaufgang, Dämmerung und Nacht anschließend wieder
+  eingeebnet. Und die Realismus-Randbedingung aus 4.1.0 verbot globale
+  Farbstiche, was denselben Effekt hatte.
+
+  Jetzt trägt jede Tageszeit Sonnenhöhe, Schattenlänge und Farbtemperatur:
+  Sonnenaufgang 3500K mit langen Schatten, Mittag 5500K mit kurzen Schatten
+  direkt unter den Objekten, Nachmittag 4500K bei 30–40 Grad Sonnenstand,
+  Dämmerung 2800K mit fast waagerechten Schatten. Die Farboption neutralisiert
+  die gewählte Farbtemperatur nicht mehr.
+- **Nacht:** Die Sonnenoptionen werden dort übergangen — sie widersprachen dem
+  Preset. Stattdessen Innenlicht durch die Fenster und eingeschaltete
+  Außenleuchten.
+
 ### 4.1.2
 
 - **Preis für Nano Banana Pro war zu hoch angesetzt** (0,24 statt 0,15 USD).

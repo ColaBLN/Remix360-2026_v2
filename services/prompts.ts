@@ -93,30 +93,68 @@ function seasonLine(jahreszeit: Jahreszeit | undefined, isInterior: boolean): st
 /* Aussenaufnahme                                                    */
 /* ---------------------------------------------------------------- */
 
-const SKY: Record<string, { sky: string; mood: string }> = {
+interface SkyPreset {
+  sky: string;
+  /** Sonnenstand und Schattenverhalten – das eigentliche Unterscheidungsmerkmal. */
+  light: string;
+  /** Farbtemperatur in Kelvin. Ohne diese Angabe sahen alle Tageszeiten gleich aus. */
+  kelvin: string;
+  /** true, wenn die Szene keine direkte Sonne hat. */
+  noSun?: boolean;
+}
+
+/**
+ * Die Presets unterschieden sich früher nur in der Himmelsbeschreibung, und
+ * die Farboption hat den Rest anschliessend wieder neutralisiert. Ergebnis:
+ * Sonnenaufgang, Mittag und Nachmittag sahen praktisch identisch aus.
+ * Jetzt trägt jede Tageszeit Sonnenhöhe, Schattenlänge und Farbtemperatur.
+ */
+const SKY: Record<string, SkyPreset> = {
   Nacht: {
-    sky: 'a deep blue-hour night sky, not pitch black, with subtle stars and no artificial moon',
-    mood: 'Warm interior light glowing from the windows, exterior fixtures on, plausible reflections and long soft shadows.',
+    sky: 'a deep blue-hour night sky, not pitch black, with subtle stars and no moon',
+    light:
+      'The sun is below the horizon. There is no direct sunlight and no cast shadows from the sun. ' +
+      'The building is lit by warm interior light glowing through the windows and by its exterior fixtures, ' +
+      'which are switched on and pool light on the ground beneath them.',
+    kelvin: 'Cool blue ambient light around 8000K, with warm 2700K pools at the light sources.',
+    noSun: true,
   },
   Sundown: {
-    sky: 'a natural sundown sky with a soft orange-to-deep-blue gradient and thin wispy clouds',
-    mood: 'Low warm ambient glow, long authentic shadows, calm and welcoming.',
+    sky: 'a sundown sky with an orange-to-deep-blue gradient and thin wispy clouds near the horizon',
+    light:
+      'The sun sits just above the horizon. Shadows are very long, stretching several times the height ' +
+      'of the objects casting them, and run almost horizontally across the ground. Only the upper facade ' +
+      'still catches direct light; the lower half is already in shade.',
+    kelvin: 'Warm low-angle light around 2800K on the sunlit surfaces, cool blue shade elsewhere.',
   },
   Sunrise: {
-    sky: 'a fresh early-morning sky with a clear horizon and light clouds catching the first sun',
-    mood: 'Crisp warm directional light from a low angle, bright and clean.',
+    sky: 'a clear early-morning sky, pale towards the horizon, with light high clouds catching the first sun',
+    light:
+      'The sun is low in the east. Shadows are long and directional, the air reads clean and slightly cool. ' +
+      'Grass and paving may still look damp. Contrast is gentle.',
+    kelvin: 'Fresh light around 3500K on lit surfaces, distinctly cooler and cleaner than an evening scene.',
   },
   Mittags: {
-    sky: 'a clear blue midday sky with a few small fair-weather cumulus clouds',
-    mood: 'Bright natural daylight, high but realistic contrast, short shadows.',
+    sky: 'a clear blue midday sky, deepest overhead, with a few small fair-weather cumulus clouds',
+    light:
+      'The sun is high overhead. Shadows are short, compact and fall almost directly beneath the objects ' +
+      'casting them. Roof surfaces are bright, vertical facades comparatively less lit. Contrast is high ' +
+      'with crisp shadow edges.',
+    kelvin: 'Neutral daylight around 5500K. Whites read as white.',
   },
   Nachmittags: {
-    sky: 'a friendly afternoon sky with soft natural clouds',
-    mood: 'Warm golden directional light, inviting, medium-length shadows.',
+    sky: 'a friendly afternoon sky with soft scattered clouds',
+    light:
+      'The sun stands at roughly 30 to 40 degrees. Shadows are of medium length and clearly directional, ' +
+      'about one to two times the height of the objects casting them. The facade facing the sun is ' +
+      'noticeably brighter than the others.',
+    kelvin: 'Slightly warm light around 4500K, gentler than midday but far from the orange of sundown.',
   },
   Original: {
     sky: 'a realistic clear blue sky with soft white clouds',
-    mood: 'Friendly bright sunny atmosphere without an over-processed look.',
+    light:
+      'Pleasant daylight with directional sun and clearly defined but not harsh shadows.',
+    kelvin: 'Neutral daylight around 5500K.',
   },
 };
 
@@ -129,7 +167,8 @@ export function exteriorPrompt(tageszeit: Tageszeit, o: OptimizationOptions): st
   // der Himmel wurde also auch getauscht, wenn der Nutzer das abgewählt hatte.
   if (o.verbessereWetter) {
     lines.push(`Sky: replace with ${preset.sky}.`);
-    lines.push(`Atmosphere: ${preset.mood}`);
+    lines.push(`Sun and shadows: ${preset.light}`);
+    lines.push(`Colour temperature: ${preset.kelvin} This is the intended look of the chosen time of day, not an unwanted cast.`);
   } else {
     lines.push('Sky and weather: keep exactly as in the source image. Do not replace the sky.');
   }
@@ -138,9 +177,18 @@ export function exteriorPrompt(tageszeit: Tageszeit, o: OptimizationOptions): st
     lines.push('Exposure: lift shadows, recover blown highlights, set a clean black point.');
   }
   if (o.verbessereFarbe) {
-    lines.push('Colour: neutral white balance, natural material-safe saturation, remove colour casts.');
+    // Früher stand hier pauschal "neutral white balance, remove colour casts".
+    // Das hat die Farbstimmung von Sonnenaufgang, Dämmerung und Nacht wieder
+    // eingeebnet, weshalb alle Tageszeiten ähnlich aussahen.
+    lines.push(
+      o.verbessereWetter
+        ? 'Colour: clean, material-safe saturation. Keep the colour temperature stated above; do not neutralise it.'
+        : 'Colour: neutral white balance, natural material-safe saturation, remove colour casts.'
+    );
   }
-  if (o.fügeSonneMitLensflaresHinzu) {
+  if (preset.noSun) {
+    // Sonnenoptionen ergeben nachts keinen Sinn und würden dem Preset widersprechen.
+  } else if (o.fügeSonneMitLensflaresHinzu) {
     lines.push(
       'Sunlight: strong direct sunlight with clearly brightened sunlit surfaces and defined shadows, ' +
       'plus one restrained, optically plausible lens flare originating from the actual sun position.'
