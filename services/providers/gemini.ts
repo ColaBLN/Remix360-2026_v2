@@ -11,17 +11,6 @@ import {
  */
 export const GEMINI_MODELS: ModelDescriptor[] = [
   {
-    id: 'gemini:2.5-flash-image',
-    providerId: 'gemini',
-    nativeId: 'gemini-2.5-flash-image',
-    label: 'Gemini 2.5 Flash Image',
-    quality: 'eco',
-    costUsd: 0.039,
-    uploadMaxEdge: 1568,
-    promptStyle: 'structured',
-    supports: { outpaint: true, aspectRatio: true },
-  },
-  {
     id: 'gemini:3.1-flash-image',
     providerId: 'gemini',
     nativeId: 'gemini-3.1-flash-image-preview',
@@ -29,6 +18,7 @@ export const GEMINI_MODELS: ModelDescriptor[] = [
     quality: 'hd',
     costUsd: 0.11,
     uploadMaxEdge: 2048,
+    outputMp: 4.2,
     promptStyle: 'structured',
     supports: { outpaint: true, aspectRatio: true },
   },
@@ -40,6 +30,7 @@ export const GEMINI_MODELS: ModelDescriptor[] = [
     quality: 'ultra',
     costUsd: 0.24,
     uploadMaxEdge: 2048,
+    outputMp: 4.2,
     promptStyle: 'structured',
     supports: { outpaint: true, aspectRatio: true },
   },
@@ -49,8 +40,8 @@ export const GEMINI_MODELS: ModelDescriptor[] = [
  * 2K statt 4K als Standard. 4K verdoppelt die Kosten, und für Exposéfotos
  * auf Portalen bringt es nichts – die skalieren ohnehin herunter.
  */
-function imageSizeFor(model: ModelDescriptor): '1K' | '2K' | undefined {
-  return model.quality === 'eco' ? undefined : '2K';
+function imageSizeFor(_model: ModelDescriptor): '1K' | '2K' {
+  return '2K';
 }
 
 function classify(err: unknown): ProviderError {

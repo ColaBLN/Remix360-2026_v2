@@ -34,6 +34,8 @@ export type TaskKind =
   | 'outdoor-furnish'
   | 'outpaint'
   | 'soften'
+  /** Einzweck-Durchgang: nur Glanz und Spiegelungen entfernen. */
+  | 'deglare'
   | 'custom';
 
 export interface EditRequest {
@@ -67,6 +69,15 @@ export interface ModelDescriptor {
   costUsd: number;
   /** Kantenlänge, auf die vor dem Upload verkleinert wird. */
   uploadMaxEdge: number;
+  /**
+   * Ungefähre Ausgabegröße in Megapixeln.
+   *
+   * Bewusst als eigenes Feld: Modelle wurden bisher nach Stufe und Preis
+   * einsortiert, aber nie nach dem, was am Ende herauskommt. FLUX Kontext und
+   * Nano Banana kosteten fast gleich viel und standen beide unter Eco – nur
+   * lieferte das eine viermal so viele Pixel wie das andere.
+   */
+  outputMp: number;
   promptStyle: PromptStyle;
   supports: { outpaint: boolean; aspectRatio: boolean };
 }

@@ -129,3 +129,37 @@ export function clippedShare(ctx: CanvasRenderingContext2D, width: number, heigh
   }
   return clipped / (total / 8);
 }
+
+/**
+ * Wendet die Dämpfung auf ein fertiges Bild an.
+ *
+ * Die Vorbehandlung allein reicht nicht: Das Modell rendert anschliessend ein
+ * eigenes, helleres Bild und kann den Glanz dabei neu erzeugen. Deshalb läuft
+ * derselbe Schritt auch über das Ergebnis — dort aber deutlich vorsichtiger,
+ * damit ein sauber gezeichneter Sonnenfleck nicht flach wird. Angefasst wird
+ * nur, was praktisch ausgebrannt ist.
+ */
+export async function dampenGlareBlob(
+  blob: Blob,
+  opts: GlareOptions = { threshold: 0.90, maxDrop: 0.12, strength: 1 }
+): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return blob;
+
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    dampenGlare(ctx, canvas.width, canvas.height, opts);
+
+    return await new Promise<Blob>(resolve =>
+      canvas.toBlob(b => resolve(b ?? blob), 'image/jpeg', 0.94)
+    );
+  } catch {
+    // Im Zweifel lieber unverändert als kaputt.
+    return blob;
+  }
+}

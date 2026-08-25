@@ -24,6 +24,60 @@ npm run dev
 
 ## Änderungen
 
+### 5.4.0 — Nur noch brauchbare Auflösungen
+
+Zwei Ergebnisse desselben Objekts unterschieden sich um Faktor vier im
+Pixelvolumen: 2752 x 1536 gegenüber 1344 x 768. Gemessen war das kleinere pro
+Pixel sogar schärfer (Detailenergie 184 gegen 154 bei gleichem Massstab) — es
+war nur zu klein. Auf Exposé-Grösse hochskaliert liest sich das als unscharf.
+
+Ursache: Modelle waren nach Stufe und Preis einsortiert, aber nie nach dem, was
+sie ausgeben. FLUX Kontext und Nano Banana standen beide unter Eco und kosteten
+fast gleich viel — nur lieferte das eine viermal so viele Pixel.
+
+**Entfernt**, weil rund 1 MP:
+
+- `fal-ai/flux-pro/kontext` (1344 x 768)
+- `fal-ai/nano-banana/edit` (1K-Klasse)
+- `gemini-2.5-flash-image` (kennt den imageSize-Parameter nicht)
+
+**Neuer Katalog**, alle mindestens 3 MP:
+
+| Stufe | Modell | Ausgabe | Preis |
+|---|---|---|---|
+| Eco | Seedream V4 Edit | 3,1 MP | 0,037 € |
+| HD | Nano Banana 2 / Gemini 3.1 Flash | 4,2 MP | 0,101–0,110 € |
+| Ultra | Nano Banana Pro / Gemini 3 Pro | 4,2 MP | 0,138–0,221 € |
+
+- **`outputMp` im Modell-Deskriptor**, sichtbar in der Modellauswahl.
+- **Tatsächliche Ausgabegrösse unter jedem Ergebnis**, neben Modell und Kosten.
+  Unter 2 MP wird der Wert orange hervorgehoben — falls ein Modell einmal
+  weniger liefert als angekündigt, siehst du es sofort statt erst am Portal.
+
+### 5.3.0 — Glanz, dritter Anlauf
+
+Die Vorbehandlung aus 5.2.0 reichte nicht, und der Grund war ein Denkfehler:
+Sie entschärft nur die **Eingabe**. Das Modell rendert danach ein eigenes,
+helleres Bild und erzeugt den Glanz dabei neu. Die Ausgabe wurde nie angefasst.
+
+- **Nachbehandlung des Ergebnisses.** `dampenGlareBlob` in `utils/tone.ts`
+  läuft jetzt auch über das fertige Bild, dort aber vorsichtiger eingestellt
+  (Schwelle 0.90 statt 0.82, geringerer Abzug), damit ein sauber gezeichneter
+  Sonnenfleck nicht flach wird. Angefasst wird nur, was praktisch ausgebrannt
+  ist. Kostet nichts.
+- **Einzweck-Durchgang „Glanz entfernen".** Neuer Knopf in der Werkzeugleiste
+  bei Innenaufnahmen. Retuschiert ausschliesslich reflektierende Flächen:
+  Maserung wird durch den Fleck hindurch fortgesetzt, passend zu Richtung,
+  Maßstab, Farbe und Kontrast des Bodens direkt daneben. Beleuchtung, Farbe,
+  Wände und Möbel bleiben ausdrücklich unangetastet.
+
+  Warum als eigener Durchgang: Steht die Glanz-Regel zwischen zehn anderen
+  Anweisungen, geht sie unter — das war in drei Prompt-Fassungen zu sehen.
+  Allein stehend ist sie die Aufgabe. Kostet eine Generierung, wird deshalb
+  nur auf Klick ausgelöst.
+
+Prompt-Fassung `2026.08.25-d`.
+
 ### 5.2.0 — Glanz rechnerisch statt per Prompt
 
 Drei Prompt-Fassungen haben den Spiegelglanz auf Böden nicht wegbekommen. Der

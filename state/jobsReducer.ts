@@ -26,6 +26,8 @@ export interface ImageJob {
   cached?: boolean;
   /** Prompt-Fassung, mit der das Ergebnis entstand. */
   promptVersion?: string;
+  /** Tatsächliche Ausgabegröße in Pixeln. */
+  outputSize?: { width: number; height: number };
   /** true, wenn der Auftrag aus der Ablage kommt und nicht aus dieser Sitzung. */
   restored?: boolean;
   stagingOptions?: { mode: StagingMode; roomType: RoomType };

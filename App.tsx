@@ -238,6 +238,7 @@ const App: React.FC = () => {
       case 'outdoor-furnish': return 'Möblieren / Outdoor Staging';
       case 'outpaint': return 'Zoom Out / Outpainting';
       case 'soften': return 'Schatten weicher machen';
+      case 'deglare': return 'Glanz & Spiegelungen entfernen';
       case 'custom': return 'Custom-Edit / KI-Pinsel';
     }
   };
@@ -454,6 +455,8 @@ const App: React.FC = () => {
   const handleZoomIn = useCallback((id: string) => followUp(id, 'detail'), [followUp]);
   const handleFurnish = useCallback((id: string) => followUp(id, 'outdoor-furnish'), [followUp]);
   const handleSoftenEdges = useCallback((id: string) => followUp(id, 'soften'), [followUp]);
+  /** Einzweck-Durchgang: entfernt nur Glanz, ohne die Beleuchtung anzufassen. */
+  const handleDeglare = useCallback((id: string) => followUp(id, 'deglare'), [followUp]);
   const handleCustomEdit = useCallback(
     (id: string, prompt: string) => followUp(id, 'custom', prompt), [followUp]);
 
@@ -674,7 +677,7 @@ const App: React.FC = () => {
                       >
                         {options.map(m => (
                           <option key={m.id} value={m.id}>
-                            {m.label} · ca. {(m.costUsd * 0.92).toFixed(3)} €
+                            {m.label} · {m.outputMp.toFixed(1)} MP · ca. {(m.costUsd * 0.92).toFixed(3)} €
                           </option>
                         ))}
                       </select>
@@ -683,7 +686,9 @@ const App: React.FC = () => {
                 })}
                 <p className="text-[10px] text-gray-500 leading-relaxed">
                   Nano Banana ist Googles Bildmodell auf fal-Infrastruktur – dieselbe Familie wie der
-                  direkte Gemini-Zugang, nur über einen anderen Schlüssel.
+                  direkte Gemini-Zugang, nur über einen anderen Schlüssel. Alle Modelle hier geben
+                  mindestens 3 Megapixel aus; Varianten mit rund 1 MP wurden entfernt, weil sie für
+                  Exposé-Bilder zu klein sind.
                 </p>
               </div>
             )}
@@ -801,6 +806,7 @@ const App: React.FC = () => {
             onShallowSun={handleShallowSun}
             onCustomEdit={handleCustomEdit}
             onSoftenEdges={handleSoftenEdges}
+            onDeglare={handleDeglare}
             optimizationOptions={optimizationOptions}
             onOptimizationChange={setOptimizationOptions}
             selectedTageszeiten={selectedTageszeiten}

@@ -46,26 +46,15 @@ const DEFAULT_SHAPE: FalShape = { imageField: 'image_urls', sizeField: 'aspect_r
  */
 export const FAL_MODELS: ModelDescriptor[] = [
   {
-    id: 'fal:nano-banana',
+    id: 'fal:seedream-v4-edit',
     providerId: 'fal',
-    nativeId: 'fal-ai/nano-banana/edit',
-    label: 'Nano Banana (Gemini 2.5 Flash Image)',
-    quality: 'eco',
-    costUsd: 0.039,
-    uploadMaxEdge: 1568,
-    promptStyle: 'structured',
-    supports: { outpaint: true, aspectRatio: true },
-  },
-  {
-    id: 'fal:flux-kontext-pro',
-    providerId: 'fal',
-    nativeId: 'fal-ai/flux-pro/kontext',
-    label: 'FLUX.1 Kontext [pro]',
+    nativeId: 'fal-ai/bytedance/seedream/v4/edit',
+    label: 'Seedream V4 Edit',
     quality: 'eco',
     costUsd: 0.04,
-    uploadMaxEdge: 1568,
-    // Kontext folgt kurzen Anweisungen; lange Constraint-Blöcke führen dazu,
-    // dass am Bild sichtbar nichts passiert.
+    uploadMaxEdge: 2048,
+    // Nimmt eine explizite Zielgrösse entgegen, wir fordern 2048 lange Kante an.
+    outputMp: 3.1,
     promptStyle: 'concise',
     supports: { outpaint: false, aspectRatio: true },
   },
@@ -75,22 +64,11 @@ export const FAL_MODELS: ModelDescriptor[] = [
     nativeId: 'fal-ai/nano-banana-2/edit',
     label: 'Nano Banana 2',
     quality: 'hd',
-    // 0.08 bei 1K, Faktor 1.5 für 2K.
     costUsd: 0.12,
     uploadMaxEdge: 2048,
+    outputMp: 4.2,
     promptStyle: 'structured',
     supports: { outpaint: true, aspectRatio: true },
-  },
-  {
-    id: 'fal:seedream-v4-edit',
-    providerId: 'fal',
-    nativeId: 'fal-ai/bytedance/seedream/v4/edit',
-    label: 'Seedream V4 Edit',
-    quality: 'hd',
-    costUsd: 0.04,
-    uploadMaxEdge: 2048,
-    promptStyle: 'concise',
-    supports: { outpaint: false, aspectRatio: true },
   },
   {
     id: 'fal:nano-banana-pro',
@@ -98,14 +76,25 @@ export const FAL_MODELS: ModelDescriptor[] = [
     nativeId: 'fal-ai/nano-banana-pro/edit',
     label: 'Nano Banana Pro (Gemini 3 Pro Image)',
     quality: 'ultra',
-    // 1K und 2K fallen bei Pro unter dieselbe Standardrate – 2K kostet also
-    // nichts extra. Erst 4K verdoppelt auf 0.30.
     costUsd: 0.15,
     uploadMaxEdge: 2048,
+    outputMp: 4.2,
     promptStyle: 'structured',
     supports: { outpaint: true, aspectRatio: true },
   },
 ];
+
+/*
+ * Bewusst entfernt, weil beide nur rund ein Megapixel ausgeben:
+ *
+ *   fal-ai/flux-pro/kontext   1344 x 768
+ *   fal-ai/nano-banana/edit   ebenfalls 1K-Klasse
+ *
+ * Sie standen preislich gleichauf mit Modellen, die viermal so viele Pixel
+ * liefern. Für ein Exposé-Titelbild ist 1 MP zu wenig – das Portal skaliert
+ * dann von einer zu kleinen Vorlage, und das Ergebnis wirkt unscharf, obwohl
+ * es pro Pixel sogar knackiger ist.
+ */
 
 function classify(status: number, body: string): ProviderError {
   if (status === 401 || status === 403) return new ProviderError('auth', 'fal lehnt den API-Schlüssel ab.', false);

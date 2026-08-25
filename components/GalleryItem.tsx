@@ -83,6 +83,7 @@ interface GalleryItemProps {
   onShallowSun: (groupId: string) => void;
   onCustomEdit: (jobId: string, prompt: string) => void;
   onSoftenEdges: (jobId: string) => void;
+  onDeglare: (jobId: string) => void;
   watermarkLogo: string | null;
 }
 
@@ -107,7 +108,7 @@ const TAGESZEIT_ORDER: Tageszeit[] = ['Original', 'Digital Staging', 'Normal', '
 
 export const GalleryItem: React.FC<GalleryItemProps> = ({ 
     jobs, onRetry, onRedoWithPro, onRedoWithHD, onZoomOut, onZoomIn, onFurnish, 
-    onIntenseSun, onLessSun, onShallowSun, onCustomEdit, onSoftenEdges, watermarkLogo 
+    onIntenseSun, onLessSun, onShallowSun, onCustomEdit, onSoftenEdges, onDeglare, watermarkLogo 
 }) => {
     const firstJob = jobs[0];
     const isAuto = firstJob.imageType === 'auto';
@@ -215,6 +216,7 @@ export const GalleryItem: React.FC<GalleryItemProps> = ({
                     onShallowSun={onShallowSun}
                     onCustomEdit={onCustomEdit}
                     onSoftenEdges={onSoftenEdges}
+                    onDeglare={onDeglare}
                     onSave={handleSave}
                     onSaveWithWatermark={handleSaveWithWatermark}
                 />
@@ -245,13 +247,14 @@ interface ResultCardProps {
     onShallowSun: (groupId: string) => void;
     onCustomEdit: (id: string, prompt: string) => void;
     onSoftenEdges: (id: string) => void;
+    onDeglare: (id: string) => void;
     onSave: (job: ImageJob) => void;
     onSaveWithWatermark: (job: ImageJob) => void;
 }
 
 const ResultCard: React.FC<ResultCardProps> = ({ 
     job, isInterior, isExterior, hasIntense, hasSubtil, hasShallow, groupId,
-    onRetry, onRedoWithPro, onRedoWithHD, onZoomOut, onZoomIn, onFurnish, onIntenseSun, onLessSun, onShallowSun, onCustomEdit, onSoftenEdges, onSave, onSaveWithWatermark 
+    onRetry, onRedoWithPro, onRedoWithHD, onZoomOut, onZoomIn, onFurnish, onIntenseSun, onLessSun, onShallowSun, onCustomEdit, onSoftenEdges, onDeglare, onSave, onSaveWithWatermark 
 }) => {
     const [editPrompt, setEditPrompt] = useState("");
     /** Ergebnis in voller Grösse ansehen – rein visuell, kostet nichts. */
@@ -314,6 +317,18 @@ const ResultCard: React.FC<ResultCardProps> = ({
                     >
                         {job.modelLabel}
                     </span>
+                    {job.outputSize && (
+                        <span
+                            className={`flex-shrink-0 font-mono ${
+                                job.outputSize.width * job.outputSize.height < 2_000_000
+                                    ? 'text-amber-600 font-bold'
+                                    : ''
+                            }`}
+                            title={`${job.outputSize.width} x ${job.outputSize.height} Pixel`}
+                        >
+                            {((job.outputSize.width * job.outputSize.height) / 1e6).toFixed(1)} MP
+                        </span>
+                    )}
                     <span className="flex-shrink-0 font-mono">
                         {job.cached
                             ? <span className="text-emerald-600 font-bold">aus dem Speicher · 0,0000 €</span>
@@ -424,6 +439,20 @@ const ResultCard: React.FC<ResultCardProps> = ({
                                     title="Schattenkanten abmildern (Weicher)"
                                 >
                                     <SoftenIcon className="w-4 h-4" />
+                                </button>
+                            )}
+
+                            {isInterior && (
+                                <button
+                                    onClick={() => onDeglare(job.id)}
+                                    className="flex-shrink-0 bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center"
+                                    aria-label="Glanz entfernen"
+                                    title="Glanz & Spiegelungen entfernen: retuschiert nur den Boden, ohne die Beleuchtung anzufassen (erzeugt ein neues Bild)"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 17h16M6 13h12M9 9h6" />
+                                        <circle cx="12" cy="5" r="2" />
+                                    </svg>
                                 </button>
                             )}
 

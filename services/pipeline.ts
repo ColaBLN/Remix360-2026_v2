@@ -1,4 +1,5 @@
 import { hashRequest, prepareImage } from '../utils/image';
+import { dampenGlareBlob } from '../utils/tone';
 import { getCached, putCached } from './cache';
 import {
   fallbacksFor, resolveRoute, runEdit, getKey,
@@ -38,6 +39,8 @@ export interface EditJobOutput {
   /** true, wenn das Ergebnis aus dem Cache kam und nichts gekostet hat. */
   cached: boolean;
   note?: string;
+  /** Tatsächlich gelieferte Pixelmasse – nicht die versprochene. */
+  outputSize?: { width: number; height: number };
   /** Fassung der Prompt-Bibliothek, mit der dieses Bild entstand. */
   promptVersion: string;
 }
@@ -55,6 +58,15 @@ export interface PipelineSettings {
  * wählen, mit Backoff versuchen, bei hartem Fehler den Anbieter wechseln,
  * Ergebnis cachen.
  */
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = () => reject(new Error('Ergebnis konnte nicht gelesen werden.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function runEditJob(
   input: EditJobInput,
   settings: PipelineSettings,
@@ -76,7 +88,7 @@ export async function runEditJob(
 
   // Glanzdämpfung nur dort, wo sie hingehört: Innenräume und Automatik.
   // Bei Aussenaufnahmen sind helle Himmelsflächen erwünscht.
-  const glareTasks: TaskKind[] = ['interior', 'auto', 'stage-empty', 'stage-furnish', 'detail'];
+  const glareTasks: TaskKind[] = ['interior', 'auto', 'stage-empty', 'stage-furnish', 'detail', 'soften'];
   const glare =
     input.options?.glanzDaempfen !== false && glareTasks.includes(input.task) ? 1 : 0;
 
@@ -144,8 +156,28 @@ export async function runEditJob(
         });
       }
 
+      // Die Vorbehandlung entschärft nur die Eingabe. Das Modell rendert
+      // danach ein eigenes Bild und kann den Glanz neu erzeugen – deshalb
+      // derselbe Schritt über das Ergebnis, nur vorsichtiger eingestellt.
+      let outputSize: { width: number; height: number } | undefined;
+      const raw = await (await fetch(`data:${result.mimeType};base64,${result.base64}`)).blob();
+      try {
+        const bmp = await createImageBitmap(raw);
+        outputSize = { width: bmp.width, height: bmp.height };
+        bmp.close();
+      } catch { /* Anzeige ist optional */ }
+
+      if (glare > 0) {
+        const cleaned = await dampenGlareBlob(raw, { threshold: 0.90, maxDrop: 0.12, strength: 1 });
+        if (cleaned !== raw) {
+          result.base64 = await blobToBase64(cleaned);
+          result.mimeType = 'image/jpeg';
+        }
+      }
+
       return {
         ...result,
+        outputSize,
         modelLabel: model.label,
         cached: false,
         note: model.id === route.model.id ? route.note : `Ausgewichen auf ${model.label}.`,

@@ -21,6 +21,8 @@ interface GalleryProps {
   onShallowSun: (groupId: string) => void;
   onCustomEdit: (jobId: string, prompt: string) => void;
   onSoftenEdges: (jobId: string) => void;
+  /** Einzweck-Durchgang gegen Glanz auf Böden und polierten Flächen. */
+  onDeglare: (jobId: string) => void;
   optimizationOptions: OptimizationOptions;
   onOptimizationChange: (options: OptimizationOptions) => void;
   selectedTageszeiten: Tageszeit[];
@@ -62,7 +64,7 @@ const SEASONS: Array<{ value: Jahreszeit; label: string; icon: string }> = [
 export const Gallery: React.FC<GalleryProps> = ({
   jobs, isProcessing, onTransform, onCancel, onReset, onRetry, onRedoWithPro, onRedoWithHD,
   onZoomOut, onZoomIn, onFurnish, onIntenseSun, onLessSun, onShallowSun,
-  onCustomEdit, onSoftenEdges, optimizationOptions, onOptimizationChange,
+  onCustomEdit, onSoftenEdges, onDeglare, optimizationOptions, onOptimizationChange,
   selectedTageszeiten, onTageszeitChange, progress, watermarkLogo,
 }) => {
   const hasPendingJobs = jobs.some(job => job.status === 'pending');
@@ -330,6 +332,7 @@ export const Gallery: React.FC<GalleryProps> = ({
             onShallowSun={onShallowSun}
             onCustomEdit={onCustomEdit}
             onSoftenEdges={onSoftenEdges}
+            onDeglare={onDeglare}
             watermarkLogo={watermarkLogo}
           />
         ))}

@@ -9,7 +9,7 @@ import type { PromptStyle, TaskKind } from './providers/types';
  *
  * BEI JEDER PROMPT-ÄNDERUNG HOCHZÄHLEN.
  */
-export const PROMPT_VERSION = '2026.08.25-c';
+export const PROMPT_VERSION = '2026.08.25-d';
 
 export type Tageszeit =
   | 'Original' | 'Sunrise' | 'Mittags' | 'Nachmittags' | 'Sundown' | 'Nacht'
@@ -434,6 +434,43 @@ export function softenPrompt(style: PromptStyle): string {
   ] }, style);
 }
 
+/**
+ * Einzweck-Durchgang gegen Glanz.
+ *
+ * Bewusst ohne Beleuchtungs-, Farb- oder Belichtungsanweisungen: Steht die
+ * Glanz-Regel zwischen zehn anderen Anweisungen, geht sie unter. Allein
+ * stehend ist sie die Aufgabe.
+ */
+export function deglarePrompt(style: PromptStyle): string {
+  return render({
+    task: 'Remove specular glare from floors and polished surfaces',
+    taskShort: 'Remove the glare from the floor',
+    instructions: [
+      [
+        'Find every area where light reflects off the floor, worktops, glass or polished surfaces as a ' +
+          'hard bright patch, a mirror-like sheen or a washed-out pale zone. Repaint each of those areas ' +
+          'as ordinary, evenly lit floor: continue the wood grain, plank joints, tile grout or carpet ' +
+          'texture straight through the patch, matching the direction, scale, colour and contrast of the ' +
+          'same floor immediately next to it. The floor must look uniformly matte, as if oiled rather ' +
+          'than lacquered.',
+        'Repaint every bright reflective patch on the floor as ordinary matte floor, continuing the wood ' +
+          'grain straight through it at the same colour and contrast as the surrounding floor.',
+      ],
+      [
+        'Keep the overall brightness of the room exactly as it is. Do not relight, do not change the ' +
+          'colour temperature, do not touch walls, ceiling, windows or furniture. This is a local ' +
+          'retouch of reflective surfaces only.',
+        'Keep room brightness and colour unchanged; touch only the reflective surfaces.',
+      ],
+      [
+        'A soft, gentle indication of where daylight falls may remain, but without any hotspot, ' +
+          'without clipping to white and without a mirror effect.',
+        'A soft hint of daylight may remain, but no hotspot and no mirror effect.',
+      ],
+    ],
+  }, style);
+}
+
 export function customPrompt(userPrompt: string, style: PromptStyle): string {
   return render({ task: 'Targeted edit requested by the user', instructions: [
     `User request: "${userPrompt.trim()}"`,
@@ -508,6 +545,7 @@ export function buildPrompt(
     case 'outdoor-furnish': return outdoorFurnishPrompt(style);
     case 'outpaint': return outpaintPrompt(style);
     case 'soften': return softenPrompt(style);
+    case 'deglare': return deglarePrompt(style);
     case 'custom': return customPrompt(ctx.userPrompt ?? '', style);
   }
 }
