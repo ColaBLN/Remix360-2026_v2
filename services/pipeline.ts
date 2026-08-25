@@ -6,7 +6,7 @@ import {
   type ModelDescriptor, type ProviderId, type Quality,
   type RouteContext, type TaskKind,
 } from './providers';
-import { buildPrompt, type OptimizationOptions, type RoomType, type Tageszeit } from './prompts';
+import { buildPrompt, PROMPT_VERSION, type OptimizationOptions, type RoomType, type Tageszeit } from './prompts';
 import { withRetry } from './queue';
 
 export interface EditJobInput {
@@ -19,6 +19,14 @@ export interface EditJobInput {
   userPrompt?: string;
   force?: Quality;
   signal?: AbortSignal;
+  /**
+   * Erzwingt einen echten Aufruf.
+   *
+   * Ohne das liefert „Nochmal versuchen" mit unveränderten Einstellungen den
+   * identischen Cache-Schlüssel und damit exakt dasselbe Bild zurück – gemeint
+   * ist aber eine neue Fassung.
+   */
+  bypassCache?: boolean;
 }
 
 export interface EditJobOutput {
@@ -30,6 +38,8 @@ export interface EditJobOutput {
   /** true, wenn das Ergebnis aus dem Cache kam und nichts gekostet hat. */
   cached: boolean;
   note?: string;
+  /** Fassung der Prompt-Bibliothek, mit der dieses Bild entstand. */
+  promptVersion: string;
 }
 
 export interface PipelineSettings {
@@ -48,7 +58,9 @@ export interface PipelineSettings {
 export async function runEditJob(
   input: EditJobInput,
   settings: PipelineSettings,
-  onNote?: (note: string) => void
+  onNote?: (note: string) => void,
+  /** Liefert die verkleinerte Quelle heraus, damit sie gespeichert werden kann. */
+  onPrepared?: (jpeg: Blob) => void
 ): Promise<EditJobOutput> {
   const routeCtx: RouteContext = {
     task: input.task,
@@ -63,6 +75,11 @@ export async function runEditJob(
   if (route.note) onNote?.(route.note);
 
   const prepared = await prepareImage(input.source, route.model.uploadMaxEdge);
+  if (onPrepared) {
+    // Als Blob statt base64 – so landet nur ein Drittel des Volumens in der Ablage.
+    const bytes = Uint8Array.from(atob(prepared.base64), c => c.charCodeAt(0));
+    onPrepared(new Blob([bytes], { type: prepared.mimeType }));
+  }
 
   const chain: ModelDescriptor[] = [route.model, ...fallbacksFor(route.model, settings.providerOrder)];
   let lastError: unknown;
@@ -80,7 +97,7 @@ export async function runEditJob(
 
     const cacheKey = await hashRequest([prepared.base64, prompt, model.id, prepared.aspectRatio]);
 
-    if (settings.useCache) {
+    if (settings.useCache && !input.bypassCache) {
       const hit = await getCached(cacheKey);
       if (hit) {
         return {
@@ -91,6 +108,7 @@ export async function runEditJob(
           costUsd: 0,
           cached: true,
           note: route.note,
+          promptVersion: PROMPT_VERSION,
         };
       }
     }
@@ -125,6 +143,7 @@ export async function runEditJob(
         modelLabel: model.label,
         cached: false,
         note: model.id === route.model.id ? route.note : `Ausgewichen auf ${model.label}.`,
+        promptVersion: PROMPT_VERSION,
       };
     } catch (err) {
       lastError = err;

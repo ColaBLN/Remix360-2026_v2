@@ -16,6 +16,10 @@ import {
   addGenerationLog, calculateCosts, getMonthlyUsage, trackUsage, type UsageData,
 } from './services/usageService';
 import { hasVariant, type ImageJob, type ImageType, jobsReducer, makeJob } from './state/jobsReducer';
+import {
+  deleteJob, loadJobs, loadProjects, prune, requestPersistence,
+  saveJob, saveProject, type StoredJob,
+} from './services/db';
 import { fromDataUrl, toDataUrl } from './utils/image';
 import { safeLocalStorage, generateUUID } from './utils/safeStorage';
 
@@ -74,7 +78,36 @@ const App: React.FC = () => {
   );
   const [monthlyUsage, setMonthlyUsage] = useState<UsageData>(getMonthlyUsage());
 
+  /**
+   * Objekt der laufenden Sitzung. Ohne Verwaltungsoberfläche bekommt jede
+   * Sitzung automatisch eines, benannt nach Datum und Uhrzeit.
+   */
+  const [projectId, setProjectId] = useState<string>(() => generateUUID());
+  /** Wiederherstellbarer Stand aus einer früheren Sitzung. */
+  const [resumable, setResumable] = useState<{ count: number; label: string } | null>(null);
+
   const hasApiKey = connected.length > 0;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // Ohne diese Bitte darf iOS die Ablage jederzeit verwerfen.
+      void requestPersistence();
+      await prune();
+      const stored = await loadJobs();
+      if (cancelled || stored.length === 0) return;
+      const projects = await loadProjects();
+      const latest = projects[0];
+      const done = stored.filter(j => j.status === 'completed').length;
+      setResumable({
+        count: done || stored.length,
+        label: latest
+          ? new Date(latest.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })
+          : '',
+      });
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   /** Object-URLs wurden bisher nie freigegeben – bei langen Sitzungen ein Leck. */
   const objectUrls = useRef<string[]>([]);
@@ -97,6 +130,92 @@ const App: React.FC = () => {
   /* ---------------------------------------------------------------- */
   /* Kern: eine Funktion für jede Bearbeitung                          */
   /* ---------------------------------------------------------------- */
+
+  /** Legt einen Auftrag in der Ablage ab. Fehler hier dürfen nichts blockieren. */
+  const persist = useCallback(async (
+    job: ImageJob,
+    patch: Partial<StoredJob> & { source: Blob | null; result: Blob | null }
+  ) => {
+    try {
+      await saveProject({
+        id: job.projectId,
+        name: new Date().toLocaleString('de-DE', {
+          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+        }),
+        createdAt: Date.now(),
+      });
+      const { source, ...rest } = patch;
+      if (!source) return;
+      await saveJob({
+        id: job.id,
+        projectId: job.projectId,
+        groupId: job.groupId,
+        source,
+        sourceName: job.file.name,
+        result: null,
+        status: 'completed',
+        tageszeit: job.tageszeit,
+        imageType: job.imageType,
+        stagingOptions: job.stagingOptions,
+        createdAt: Date.now(),
+        ...rest,
+      });
+    } catch (e) {
+      console.warn('[Ablage] Auftrag konnte nicht gespeichert werden', e);
+    }
+  }, []);
+
+  /** Baut gespeicherte Aufträge zurück in den Arbeitszustand. */
+  const restoreJobs = useCallback(async () => {
+    const stored = await loadJobs();
+    if (stored.length === 0) return;
+
+    const jobs: ImageJob[] = stored.map(sj => {
+      // Die verkleinerte Quelle wird wieder zu einer File – dadurch
+      // funktionieren Original-Ansicht und „Nochmal versuchen" unverändert.
+      const file = new File([sj.source], sj.sourceName || 'bild.jpg', { type: sj.source.type });
+      const originalUrl = URL.createObjectURL(file);
+      objectUrls.current.push(originalUrl);
+
+      let generatedUrl: string | null = null;
+      if (sj.result) {
+        generatedUrl = URL.createObjectURL(sj.result);
+        objectUrls.current.push(generatedUrl);
+      }
+
+      return {
+        id: sj.id,
+        projectId: sj.projectId,
+        groupId: sj.groupId,
+        file,
+        originalUrl,
+        generatedUrl,
+        status: sj.result ? 'completed' : 'pending',
+        error: sj.error,
+        note: sj.note,
+        tageszeit: sj.tageszeit,
+        imageType: sj.imageType as ImageType,
+        stagingOptions: sj.stagingOptions,
+        modelLabel: sj.modelLabel,
+        costEur: sj.costEur,
+        cached: sj.cached,
+        promptVersion: sj.promptVersion,
+        restored: true,
+      };
+    });
+
+    setProjectId(jobs[0].projectId);
+    setSelectedType(jobs[0].imageType);
+    dispatch({ type: 'replace', jobs });
+    setResumable(null);
+    setAppState('gallery');
+  }, []);
+
+  const discardStored = useCallback(async () => {
+    const stored = await loadJobs();
+    await Promise.all(stored.map(j => deleteJob(j.id)));
+    setResumable(null);
+  }, []);
 
   const taskForJob = (job: ImageJob): TaskKind => {
     if (job.imageType === 'staging') {
@@ -133,6 +252,8 @@ const App: React.FC = () => {
       signal?: AbortSignal;
       /** Folgeoperation: arbeitet auf dem bisherigen Ergebnis statt auf der Datei. */
       fromResult?: boolean;
+      /** Wiederholung: erzwingt eine neue Fassung statt eines Cache-Treffers. */
+      bypassCache?: boolean;
     } = {}
   ) => {
     dispatch({ type: 'patch', id: job.id, patch: { status: 'processing', error: undefined, note: undefined } });
@@ -149,6 +270,10 @@ const App: React.FC = () => {
         source = await (await fetch(toDataUrl(base64, mimeType))).blob();
       }
 
+      // Die verkleinerte Quelle wird für die Ablage aufgehoben: nicht die
+      // Rohdatei aus der Kamera, sondern genau das, was zum Modell geht.
+      let preparedSource: Blob | null = null;
+
       const result = await runEditJob({
         task,
         source,
@@ -158,7 +283,12 @@ const App: React.FC = () => {
         userPrompt: opts.userPrompt,
         force: opts.force,
         signal: opts.signal,
-      }, settingsRef.current, note => dispatch({ type: 'patch', id: job.id, patch: { note } }));
+        bypassCache: opts.bypassCache,
+      },
+        settingsRef.current,
+        note => dispatch({ type: 'patch', id: job.id, patch: { note } }),
+        jpeg => { preparedSource = jpeg; }
+      );
 
       if (!result.cached) trackUsage(result.modelId, result.costUsd);
       addGenerationLog(result.modelId, describe(task, job), {
@@ -247,7 +377,7 @@ const App: React.FC = () => {
       objectUrls.current.push(originalUrl);
 
       initial.forEach(tageszeit => newJobs.push(makeJob({
-        groupId, file, originalUrl, tageszeit,
+        projectId, groupId, file, originalUrl, tageszeit,
         imageType: selectedType,
         stagingOptions: selectedType === 'staging' ? stagingConfigs[idx] : undefined,
       })));
@@ -275,6 +405,7 @@ const App: React.FC = () => {
     const next: ImageJob[] = [];
     groups.forEach((sample, groupId) => {
       newSelection.forEach(tageszeit => next.push(makeJob({
+        projectId: sample.projectId,
         groupId,
         file: sample.file,
         originalUrl: sample.originalUrl,
@@ -296,7 +427,10 @@ const App: React.FC = () => {
   const handleRetry = useCallback((jobId: string, force?: Quality) => {
     const job = byId(jobId);
     if (!job) return;
-    void process({ ...job, generatedUrl: null }, taskForJob(job), { source: job.file, force });
+    // Wiederholung heisst: neu rechnen, nicht den alten Treffer zeigen.
+    void process({ ...job, generatedUrl: null }, taskForJob(job), {
+      source: job.file, force, bypassCache: true,
+    });
   }, [process]);
 
   const handleRedoWithPro = useCallback((jobId: string) => {
@@ -331,6 +465,7 @@ const App: React.FC = () => {
     if (!sample) return;
 
     const job = makeJob({
+      projectId: sample.projectId,
       groupId,
       file: sample.file,
       originalUrl: sample.originalUrl,
@@ -357,6 +492,7 @@ const App: React.FC = () => {
     setAppState('select_type');
     setPendingFiles([]);
     setSelectedType(null);
+    setProjectId(generateUUID());
   }, []);
 
   /* ---------------------------------------------------------------- */
@@ -570,6 +706,34 @@ const App: React.FC = () => {
       case 'select_type':
         return (
           <div className="w-full max-w-4xl mx-auto text-center animate-fade-in">
+            {resumable && (
+              <div className="mb-8 bg-white border border-brand-blue/20 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 text-left">
+                <div>
+                  <p className="font-bold text-brand-blue">
+                    Letzte Sitzung fortsetzen
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {resumable.count} {resumable.count === 1 ? 'Bild' : 'Bilder'}
+                    {resumable.label && ` vom ${resumable.label}`} liegen noch bereit.
+                  </p>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => void discardStored()}
+                    className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    Verwerfen
+                  </button>
+                  <button
+                    onClick={() => void restoreJobs()}
+                    className="px-5 py-2 bg-brand-blue text-white text-sm font-bold rounded-xl hover:bg-brand-blue-hover transition-colors"
+                  >
+                    Fortsetzen
+                  </button>
+                </div>
+              </div>
+            )}
+
             <h2 className="text-2xl font-bold text-brand-blue mb-4">Was möchten Sie tun?</h2>
             <p className="text-gray-600 mb-8">Wählen Sie das passende Modul für Ihre Immobilienfotos.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">

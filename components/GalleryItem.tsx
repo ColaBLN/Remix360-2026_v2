@@ -308,7 +308,12 @@ const ResultCard: React.FC<ResultCardProps> = ({
             {/* Herkunft und Kosten pro Bild */}
             {job.status === 'completed' && job.modelLabel && (
                 <div className="px-2 pt-1 flex items-center justify-between gap-2 text-[9px] text-gray-400 font-medium">
-                    <span className="truncate" title={job.modelLabel}>{job.modelLabel}</span>
+                    <span
+                        className="truncate"
+                        title={`${job.modelLabel}${job.promptVersion ? ` · Prompts ${job.promptVersion}` : ''}`}
+                    >
+                        {job.modelLabel}
+                    </span>
                     <span className="flex-shrink-0 font-mono">
                         {job.cached
                             ? <span className="text-emerald-600 font-bold">aus dem Speicher · 0,0000 €</span>

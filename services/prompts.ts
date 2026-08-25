@@ -1,5 +1,16 @@
 import type { PromptStyle, TaskKind } from './providers/types';
 
+/**
+ * Fassung der Prompt-Bibliothek. Wird an jedem Ergebnis mitgeschrieben.
+ *
+ * Ohne diesen Stempel liess sich nicht rekonstruieren, mit welcher Fassung ein
+ * Bild entstanden ist – bei einer App, deren Qualität fast vollständig an den
+ * Prompts hängt, ist das die eigentliche Qualitätssicherung.
+ *
+ * BEI JEDER PROMPT-ÄNDERUNG HOCHZÄHLEN.
+ */
+export const PROMPT_VERSION = '2026.08.25-a';
+
 export type Tageszeit =
   | 'Original' | 'Sunrise' | 'Mittags' | 'Nachmittags' | 'Sundown' | 'Nacht'
   | 'Normal' | 'Intensiv' | 'Subtil' | 'ShallowSun' | 'Digital Staging'
@@ -52,11 +63,13 @@ const INVARIANTS = [
   'Do not apply an arbitrary filter or bloom to the whole frame. Any overall colour cast must come from the stated time of day, nothing else.',
   'Restraint applies to structure, materials and colour. It does not apply to lighting: ' +
     'the lighting improvement must be clearly visible when compared to the source image.',
+  'No clipped highlights: every bright area must retain texture and detail. Nothing burns out to pure white.',
   'Photorealistic result. No HDR halos, no oversaturation, no plastic sheen. It must read as a photograph.',
 ].join(' ');
 
 const CONCISE_TAIL =
-  'Keep architecture, perspective and materials unchanged. Photorealistic, no arbitrary filters.';
+  'Keep architecture, perspective and materials unchanged. Photorealistic, no arbitrary filters. ' +
+  'No blown-out highlights: sunlit areas keep their texture, glossy surfaces stay matte, nothing burns to white.';
 
 /**
  * Eine Anweisung in zwei Längen.
@@ -319,6 +332,13 @@ export function interiorPrompt(
     instructions: [
       `Lighting: ${INTERIOR_LIGHT[variation] ?? INTERIOR_LIGHT.Normal}`,
       'Windows: keep the view through the windows plausible. Do not blow it out to pure white.',
+      // Der Sonnenfleck soll Licht auf einer Oberfläche sein, kein weisser Klecks.
+      // Im Original brennt genau diese Stelle auf Parkett und Arbeitsplatten
+      // regelmässig aus und glänzt spiegelnd.
+      'Sunlit patches on the floor must keep the wood grain, tile joints or carpet texture fully visible ' +
+        'inside the lit area. Reduce specular sheen and mirror-like reflections on glossy floors, worktops, ' +
+        'glass and polished surfaces to a soft, matte-looking finish. Bring back any detail that is blown ' +
+        'out in the source. Sunlight should read as light falling on a surface, never as a white blob.',
       o.verbessereHelligkeitKontrast &&
         'Exposure: open up shadow detail in corners and under furniture without flattening the image.',
       o.verbessereFarbe &&

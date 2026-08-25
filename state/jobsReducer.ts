@@ -5,6 +5,12 @@ export type ImageType = 'interior' | 'exterior' | 'staging' | 'detail' | 'auto';
 
 export interface ImageJob {
   id: string;
+  /**
+   * Objekt-Zuordnung. Bewusst schon im Datenmodell, auch ohne Oberfläche:
+   * so ist die Objektverwaltung später reine Oberflächenarbeit statt
+   * Datenwanderung. Ohne Verwaltung bekommt jede Sitzung automatisch eines.
+   */
+  projectId: string;
   groupId: string;
   file: File;
   originalUrl: string;
@@ -18,6 +24,10 @@ export interface ImageJob {
   modelLabel?: string;
   costEur?: number;
   cached?: boolean;
+  /** Prompt-Fassung, mit der das Ergebnis entstand. */
+  promptVersion?: string;
+  /** true, wenn der Auftrag aus der Ablage kommt und nicht aus dieser Sitzung. */
+  restored?: boolean;
   stagingOptions?: { mode: StagingMode; roomType: RoomType };
 }
 
@@ -46,7 +56,7 @@ export function jobsReducer(state: ImageJob[], action: JobsAction): ImageJob[] {
 }
 
 export function makeJob(
-  base: Pick<ImageJob, 'groupId' | 'file' | 'originalUrl' | 'imageType' | 'tageszeit'> &
+  base: Pick<ImageJob, 'projectId' | 'groupId' | 'file' | 'originalUrl' | 'imageType' | 'tageszeit'> &
     Partial<Pick<ImageJob, 'stagingOptions'>>
 ): ImageJob {
   return { id: generateUUID(), generatedUrl: null, status: 'pending', ...base };

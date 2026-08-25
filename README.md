@@ -24,6 +24,56 @@ npm run dev
 
 ## Änderungen
 
+### 5.1.0
+
+- **„Nochmal versuchen" lieferte den Zwischenspeicher statt einer neuen
+  Fassung.** Bei unveränderten Einstellungen ergaben Quelle, Prompt, Modell und
+  Seitenverhältnis denselben Cache-Schlüssel — zurück kam exakt dasselbe Bild,
+  kostenlos, aber sinnlos. Wiederholungen erzwingen jetzt einen echten Aufruf.
+  Der Zwischenspeicher bleibt für alles andere aktiv.
+- **Ausgebrannte Sonnenflecken und Glanz.** Auf Parkett, Arbeitsplatten und
+  polierten Flächen brannte der Sonnenfleck regelmäßig ins reine Weiß aus, die
+  Maserung darin verschwand, dazu kamen spiegelnde Reflexe. Neu als allgemeine
+  Regel: keine beschnittenen Lichter, jede helle Fläche behält Zeichnung. Für
+  Innenaufnahmen zusätzlich: Holzmaserung, Fliesenfugen und Teppichstruktur
+  bleiben innerhalb der besonnten Fläche sichtbar, Glanz und Spiegelungen
+  werden auf ein mattes Maß zurückgenommen. Auch in der Kurzfassung für FLUX
+  und Seedream enthalten.
+- Prompt-Fassung `2026.08.25-a`.
+
+### 5.0.0 — Phase 0: Fundament
+
+Keine sichtbaren neuen Funktionen, sondern die Grundlage für alles Weitere.
+
+**Persistenz.** Aufträge und Ergebnisse liegen in IndexedDB (`services/db.ts`),
+getrennt vom inhaltsbasierten Ergebnis-Cache. Reload, Absturz oder ein Anruf
+auf dem Handy kosten keine Arbeit mehr. Auf dem Startbildschirm erscheint eine
+Karte zum Fortsetzen.
+
+Gespeichert wird **nicht** die Rohdatei aus der Kamera, sondern die bereits auf
+2048 px verkleinerte Fassung — genau die, die auch zum Modell geht. Das spart
+rund 85 Prozent Platz (etwa 580 KB statt 4 MB), und weil es dieselben Pixel
+sind, liefert „Nochmal versuchen" nach einem Reload identische Ergebnisse. Beim
+Wiederherstellen wird daraus wieder ein `File`-Objekt, wodurch der gesamte
+nachgelagerte Code unverändert funktioniert.
+
+Aufbewahrung 30 Tage, danach wird beim Start automatisch aufgeräumt. Über
+`navigator.storage.persist()` wird angefragt, die Ablage nicht bei
+Speicherdruck zu verwerfen — ohne das darf iOS sie jederzeit leeren.
+
+**Objekt-Ebene, vorbereitet.** `projectId` steht im Datenmodell, hat aber noch
+keine Oberfläche; jede Sitzung bekommt automatisch ein Objekt. Damit ist eine
+spätere Objektverwaltung reine Oberflächenarbeit statt Datenwanderung.
+
+**Error Boundary.** Ein Render-Fehler ergab bisher einen weißen Bildschirm ohne
+Hinweis. Jetzt eine verständliche Meldung mit Neuladen-Knopf; zusammen mit der
+Ablage bleibt die Arbeit erhalten.
+
+**Prompt-Versionierung.** `PROMPT_VERSION` in `services/prompts.ts` wird an
+jedem Ergebnis mitgeschrieben und erscheint im Tooltip der Modellzeile. Damit
+wird belegbar, welche Prompt-Fassung ein Bild erzeugt hat.
+**Bei jeder Prompt-Änderung hochzählen.**
+
 ### 4.4.0
 
 Ergebnis einer vollständigen Durchsicht.
