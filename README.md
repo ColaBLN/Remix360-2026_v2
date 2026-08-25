@@ -24,6 +24,21 @@ npm run dev
 
 ## Änderungen
 
+### 5.1.1
+
+- **Abgeschnittene Knopfreihe.** Die innere Reihe der Werkzeug-Symbole stand auf
+  `sm:flex-nowrap`, hörte also ab 640 px auf umzubrechen — die letzten Knöpfe
+  liefen aus der Karte heraus und waren nicht mehr erreichbar. Sichtbar wurde
+  das erst, seit die Karten durch das freigegebene Bildformat unterschiedliche
+  Höhen haben. Die Reihe bricht jetzt immer um.
+- **Glanz war zu schwach adressiert.** Die Regel stand an fünfter Stelle im
+  Prompt und ging unter. Sie steht jetzt direkt hinter der Beleuchtung, ist als
+  Entfernungs-Auftrag formuliert statt als Vermeidungshinweis, und benennt das
+  Ziel konkret: Maserung innerhalb der besonnten Fläche im gleichen Kontrast wie
+  daneben, versiegeltes Parkett soll geölt wirken statt lackiert. Zusätzlich in
+  den Lichtbeschreibungen selbst verankert.
+- Prompt-Fassung `2026.08.25-b`.
+
 ### 5.1.0
 
 - **„Nochmal versuchen" lieferte den Zwischenspeicher statt einer neuen

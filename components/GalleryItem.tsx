@@ -398,7 +398,7 @@ const ResultCard: React.FC<ResultCardProps> = ({
                             <span className="text-xs">Logo</span>
                         </button>
                         
-                        <div className="flex flex-wrap gap-1.5 w-full mt-1.5 sm:mt-0 sm:w-auto sm:flex-nowrap">
+                        <div className="flex flex-wrap gap-1.5 w-full mt-1.5">
                             <button 
                                 onClick={() => onZoomOut(job.id)}
                                 className="flex-shrink-0 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center"

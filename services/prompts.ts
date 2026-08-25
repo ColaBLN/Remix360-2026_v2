@@ -9,7 +9,7 @@ import type { PromptStyle, TaskKind } from './providers/types';
  *
  * BEI JEDER PROMPT-ÄNDERUNG HOCHZÄHLEN.
  */
-export const PROMPT_VERSION = '2026.08.25-a';
+export const PROMPT_VERSION = '2026.08.25-b';
 
 export type Tageszeit =
   | 'Original' | 'Sunrise' | 'Mittags' | 'Nachmittags' | 'Sundown' | 'Nacht'
@@ -306,7 +306,8 @@ const INTERIOR_LIGHT: Record<string, string> = {
     'as large, bright, clearly defined pools of light on the floor and across the furniture, with crisp ' +
     'shadow edges. One faint, restrained shaft of light in the air is welcome where the beam is strongest. ' +
     'Only the directly sunlit patches are warm; every surface not in direct sun keeps its original colour ' +
-    'and a neutral white balance. The room must read as markedly brighter and more inviting than the source.',
+    'and a neutral white balance. The lit pools show the floor texture clearly and never clip to white. ' +
+    'The room must read as markedly brighter and more inviting than the source.',
   Subtil:
     'Soft daylight fills the room through the windows. Gentle but clearly visible pools of light reach the ' +
     'floor, shadows stay open and low in contrast. The room must read as brighter and friendlier than the ' +
@@ -317,8 +318,9 @@ const INTERIOR_LIGHT: Record<string, string> = {
     'light. The lit zone near the windows must be unmistakable.',
   Normal:
     'Daylight enters through the windows and forms visible, clearly readable pools of light on the floor. ' +
-    'The room must read as noticeably brighter, friendlier and more open than the source, with shadow ' +
-    'detail lifted in corners and under furniture. The brightening comes from light, not from a warm tint.',
+    'The lit pools keep the floor texture clearly visible and never clip to white. The room must read as ' +
+    'noticeably brighter, friendlier and more open than the source, with shadow detail lifted in corners ' +
+    'and under furniture. The brightening comes from light, not from a warm tint.',
 };
 
 export function interiorPrompt(
@@ -331,14 +333,22 @@ export function interiorPrompt(
     taskShort: 'Improve the lighting in this interior photo',
     instructions: [
       `Lighting: ${INTERIOR_LIGHT[variation] ?? INTERIOR_LIGHT.Normal}`,
+      // Steht bewusst direkt hinter der Beleuchtung: es ist deren wichtigste
+      // Einschränkung. Weiter hinten im Prompt ging es unter.
+      // Formuliert als Entfernungs-Auftrag – das Modell gibt den Glanz aus dem
+      // Original sonst originalgetreu wieder, was formal richtig, aber
+      // unverkäuflich ist.
+      [
+        'CRITICAL — remove glare: wherever the source shows hard specular glare, a mirror-like sheen or a ' +
+          'burnt-out white patch on the floor, worktops, glass or polished surfaces, remove it. Repaint ' +
+          'those areas as an evenly lit matte surface. Inside every sunlit patch the wood grain, plank ' +
+          'joints, tile grout or carpet texture must be fully legible, at the same contrast as the ' +
+          'unlit part of the same floor. A varnished parquet must read as oiled, not as lacquered. ' +
+          'The brightest point in the room must still hold visible detail.',
+        'Remove all mirror-like glare and burnt-out white patches from floors and polished surfaces; ' +
+          'wood grain stays clearly visible inside sunlit areas, matte not lacquered.',
+      ],
       'Windows: keep the view through the windows plausible. Do not blow it out to pure white.',
-      // Der Sonnenfleck soll Licht auf einer Oberfläche sein, kein weisser Klecks.
-      // Im Original brennt genau diese Stelle auf Parkett und Arbeitsplatten
-      // regelmässig aus und glänzt spiegelnd.
-      'Sunlit patches on the floor must keep the wood grain, tile joints or carpet texture fully visible ' +
-        'inside the lit area. Reduce specular sheen and mirror-like reflections on glossy floors, worktops, ' +
-        'glass and polished surfaces to a soft, matte-looking finish. Bring back any detail that is blown ' +
-        'out in the source. Sunlight should read as light falling on a surface, never as a white blob.',
       o.verbessereHelligkeitKontrast &&
         'Exposure: open up shadow detail in corners and under furniture without flattening the image.',
       o.verbessereFarbe &&
