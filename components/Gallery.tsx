@@ -207,8 +207,15 @@ export const Gallery: React.FC<GalleryProps> = ({
                     {checkbox('verbessereRasen', 'Rasen verbessern')}
                   </>
                 )}
+                {!isExterior && checkbox('glanzDaempfen', '✨ Glanz & Spiegelungen dämpfen', true)}
                 {checkbox('entferneSchnee', '❄️ Schnee entfernen', true)}
               </div>
+              {!isExterior && optimizationOptions.glanzDaempfen !== false && (
+                <p className="text-[10px] text-gray-500 mt-3 leading-relaxed">
+                  Ausgebrannte Spitzlichter werden vor dem Senden rechnerisch heruntergezogen, damit
+                  die KI Maserung hineinzeichnen kann statt in eine weiße Fläche. Kostet nichts.
+                </p>
+              )}
               {isExterior && !optimizationOptions.verbessereWetter && (
                 <p className="text-[10px] text-gray-500 mt-3 leading-relaxed">
                   Der Himmel bleibt unverändert, solange „Wetter verbessern" aus ist.

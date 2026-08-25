@@ -74,7 +74,13 @@ export async function runEditJob(
   const route = resolveRoute(routeCtx);
   if (route.note) onNote?.(route.note);
 
-  const prepared = await prepareImage(input.source, route.model.uploadMaxEdge);
+  // Glanzdämpfung nur dort, wo sie hingehört: Innenräume und Automatik.
+  // Bei Aussenaufnahmen sind helle Himmelsflächen erwünscht.
+  const glareTasks: TaskKind[] = ['interior', 'auto', 'stage-empty', 'stage-furnish', 'detail'];
+  const glare =
+    input.options?.glanzDaempfen !== false && glareTasks.includes(input.task) ? 1 : 0;
+
+  const prepared = await prepareImage(input.source, route.model.uploadMaxEdge, 0.92, glare);
   if (onPrepared) {
     // Als Blob statt base64 – so landet nur ein Drittel des Volumens in der Ablage.
     const bytes = Uint8Array.from(atob(prepared.base64), c => c.charCodeAt(0));

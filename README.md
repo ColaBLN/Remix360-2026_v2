@@ -24,6 +24,44 @@ npm run dev
 
 ## Änderungen
 
+### 5.2.0 — Glanz rechnerisch statt per Prompt
+
+Drei Prompt-Fassungen haben den Spiegelglanz auf Böden nicht wegbekommen. Der
+Grund ist physikalisch, nicht sprachlich: In typischen Aufnahmen ist der
+Sonnenfleck auf lackiertem Parkett auf 255,255,255 ausgebrannt. Dort steckt
+keine Information mehr. Das Modell zu bitten, die Maserung „zurückzuholen",
+heisst, es soll Holz erfinden — während derselbe Prompt ihm verbietet, etwas zu
+erfinden. Ausserdem liest sich reines Weiss als korrekt belichtet; das Modell
+sieht keinen Fehler.
+
+**Neu: `utils/tone.ts`.** Spitzlichter werden vor dem Upload lokal auf Canvas
+heruntergezogen. Kostenlos, sofort, deterministisch.
+
+Zwei Details, die den Unterschied machen:
+
+*Erkennung über lokalen Kontrast, nicht über Helligkeit.* Eine weisse Wand und
+ein Spiegelglanz sind gleich hell — eine reine Helligkeitskurve vergraut die
+Wand mit. Gedämpft wird deshalb nur, was deutlich heller ist als seine
+Umgebung, gemessen an einer auf ein Vierundzwanzigstel verkleinerten Kopie.
+
+*Absenken statt stauchen.* Eine lineare Abbildung des Spitzlichtbereichs würde
+die verbliebene Maserung mitzusammendrücken; im Test schrumpfte sie von sechs
+auf zwei Stufen. Ein früh gesättigter, weich maskierter Abzug hält die lokale
+Steigung bei eins.
+
+Messwerte am simulierten Fall: Sonnenfleck 255 → 214, Maserungsspanne 6 → 6,
+weisse Wand und normales Parkett unverändert.
+
+Der Prompt weiss jetzt, dass die Fläche bereits entschärft ankommt, und wird
+angewiesen, Struktur in das Hellgrau zu zeichnen statt es aufzuhellen. Auf Grau
+malt ein Modell bereitwillig Textur, auf Weiss nicht.
+
+Schalter „✨ Glanz & Spiegelungen dämpfen" bei Innenaufnahmen, Staging, Detail
+und Automatik, standardmässig an. Bei Aussenaufnahmen bewusst nicht — dort sind
+helle Himmelsflächen erwünscht.
+
+Prompt-Fassung `2026.08.25-c`.
+
 ### 5.1.1
 
 - **Abgeschnittene Knopfreihe.** Die innere Reihe der Werkzeug-Symbole stand auf

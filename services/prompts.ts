@@ -9,7 +9,7 @@ import type { PromptStyle, TaskKind } from './providers/types';
  *
  * BEI JEDER PROMPT-ÄNDERUNG HOCHZÄHLEN.
  */
-export const PROMPT_VERSION = '2026.08.25-b';
+export const PROMPT_VERSION = '2026.08.25-c';
 
 export type Tageszeit =
   | 'Original' | 'Sunrise' | 'Mittags' | 'Nachmittags' | 'Sundown' | 'Nacht'
@@ -33,6 +33,11 @@ export interface OptimizationOptions {
   verbessereRasen: boolean;
   entferneSchnee: boolean;
   jahreszeit?: Jahreszeit;
+  /**
+   * Spitzlichter vor dem Upload rechnerisch herunterziehen.
+   * Kein Prompt, sondern ein Canvas-Schritt – siehe utils/tone.ts.
+   */
+  glanzDaempfen?: boolean;
 }
 
 export const DEFAULT_OPTIONS: OptimizationOptions = {
@@ -44,6 +49,7 @@ export const DEFAULT_OPTIONS: OptimizationOptions = {
   verbessereRasen: true,
   entferneSchnee: false,
   jahreszeit: 'none',
+  glanzDaempfen: true,
 };
 
 export const SYSTEM_INSTRUCTION =
@@ -338,7 +344,16 @@ export function interiorPrompt(
       // Formuliert als Entfernungs-Auftrag – das Modell gibt den Glanz aus dem
       // Original sonst originalgetreu wieder, was formal richtig, aber
       // unverkäuflich ist.
-      [
+      o.glanzDaempfen
+        ? [
+            'The input image has already had its highlights pulled down, so bright floor areas arrive as ' +
+              'light grey rather than pure white. Paint the full wood grain, plank joints, tile grout or ' +
+              'carpet texture back into those grey areas at the same contrast as the rest of the floor, ' +
+              'and keep them matte. Do not brighten them back towards white.',
+            'Bright floor areas arrive as light grey: paint the full wood grain back into them, matte, ' +
+              'and do not brighten them towards white.',
+          ]
+        : [
         'CRITICAL — remove glare: wherever the source shows hard specular glare, a mirror-like sheen or a ' +
           'burnt-out white patch on the floor, worktops, glass or polished surfaces, remove it. Repaint ' +
           'those areas as an evenly lit matte surface. Inside every sunlit patch the wood grain, plank ' +

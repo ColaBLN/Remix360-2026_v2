@@ -1,4 +1,5 @@
 import type { AspectRatio } from '../services/providers/types';
+import { clippedShare, dampenGlare } from './tone';
 
 const RATIOS: Array<[AspectRatio, number]> = [
   ['21:9', 21 / 9], ['16:9', 16 / 9], ['3:2', 3 / 2], ['4:3', 4 / 3],
@@ -30,6 +31,8 @@ export interface PreparedImage {
   height: number;
   aspectRatio: AspectRatio;
   bytes: number;
+  /** Anteil ausgebrannter Fläche vor der Dämpfung, 0 bis 1. */
+  clipped: number;
 }
 
 async function decode(source: Blob): Promise<ImageBitmap | HTMLImageElement> {
@@ -62,7 +65,9 @@ async function decode(source: Blob): Promise<ImageBitmap | HTMLImageElement> {
 export async function prepareImage(
   source: Blob,
   maxEdge = 1568,
-  quality = 0.92
+  quality = 0.92,
+  /** Spitzlichter vor dem Upload herunterziehen. Siehe utils/tone.ts. */
+  glare = 0
 ): Promise<PreparedImage> {
   const bitmap = await decode(source);
   const srcW = bitmap.width;
@@ -81,6 +86,9 @@ export async function prepareImage(
   ctx.drawImage(bitmap as CanvasImageSource, 0, 0, width, height);
   if ('close' in bitmap) bitmap.close();
 
+  const clipped = clippedShare(ctx, width, height);
+  if (glare > 0) dampenGlare(ctx, width, height, { strength: glare });
+
   const dataUrl = canvas.toDataURL('image/jpeg', quality);
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
 
@@ -91,6 +99,7 @@ export async function prepareImage(
     height,
     aspectRatio: nearestAspectRatio(srcW, srcH),
     bytes: Math.round((base64.length * 3) / 4),
+    clipped,
   };
 }
 
