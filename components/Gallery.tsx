@@ -214,8 +214,8 @@ export const Gallery: React.FC<GalleryProps> = ({
               </div>
               {!isExterior && optimizationOptions.glanzDaempfen !== false && (
                 <p className="text-[10px] text-gray-500 mt-3 leading-relaxed">
-                  Ausgebrannte Spitzlichter werden vor dem Senden rechnerisch heruntergezogen, damit
-                  die KI Maserung hineinzeichnen kann statt in eine weiße Fläche. Kostet nichts.
+                  Harte Glanzflecken im fertigen Bild werden rechnerisch zurückgenommen. Reicht das
+                  nicht, gibt es unter dem Bild den Knopf „Glanz entfernen“. Kostet nichts.
                 </p>
               )}
               {isExterior && !optimizationOptions.verbessereWetter && (

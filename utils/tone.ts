@@ -80,39 +80,68 @@ export function dampenGlare(
   const img = ctx.getImageData(0, 0, width, height);
   const d = img.data;
 
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i];
-    const g = d[i + 1];
-    const b = d[i + 2];
-    const l = luminance(r, g, b);
-    if (l <= threshold) continue;
+  // Helligkeit der Umgebungskarte einmal vorab berechnen.
+  let meanL: Float32Array | null = null;
+  if (mean) {
+    meanL = new Float32Array(mean.w * mean.h);
+    for (let k = 0; k < meanL.length; k++) {
+      const mi = k * 4;
+      meanL[k] = luminance(mean.data[mi], mean.data[mi + 1], mean.data[mi + 2]);
+    }
+  }
 
-    let localL = 0;
+  for (let y = 0; y < height; y++) {
+    // Bilinear statt nächster Nachbar.
+    //
+    // Bis 5.4.0 bekam jeder 24 x 24-Pixel-Block denselben Vergleichswert.
+    // An einem scharfkantigen Sonnenfleck sprang die Dämpfung dadurch an den
+    // Blockgrenzen um bis zu 45 Helligkeitsstufen – sichtbar als kleine
+    // Vierecke genau in den neu erzeugten Lichtflächen. Mit weicher
+    // Überblendung verschwindet das Muster (gemessen 8 statt 45 Stufen,
+    // gleichauf mit dem übrigen Bild).
+    let fy = 0, y0 = 0, y1 = 0, ay = 0;
     if (mean) {
-      const px = i / 4;
-      const x = Math.min(mean.w - 1, Math.floor((px % width) * mean.w / width));
-      const y = Math.min(mean.h - 1, Math.floor(Math.floor(px / width) * mean.h / height));
-      const mi = (y * mean.w + x) * 4;
-      localL = luminance(mean.data[mi], mean.data[mi + 1], mean.data[mi + 2]);
+      fy = Math.min(mean.h - 1, Math.max(0, (y + 0.5) * mean.h / height - 0.5));
+      y0 = Math.floor(fy);
+      y1 = Math.min(mean.h - 1, y0 + 1);
+      ay = fy - y0;
     }
 
-    // Wie stark hebt sich der Punkt von seiner Umgebung ab?
-    const excess = l - localL;
-    if (excess <= 0) continue;
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const r = d[i];
+      const g = d[i + 1];
+      const b = d[i + 2];
+      const l = luminance(r, g, b);
+      if (l <= threshold) continue;
 
-    const standsOut = smoothstep(0.05, 0.18, excess);
-    // Übergangszone früh gesättigt: darüber wirkt nur der konstante Abzug,
-    // sonst würde die Restmaserung mitzusammengedrückt.
-    const isBright = smoothstep(threshold, Math.min(1, threshold + 0.08), l);
-    const amount = standsOut * isBright * strength;
-    if (amount <= 0) continue;
+      let localL = 0;
+      if (mean && meanL) {
+        const fx = Math.min(mean.w - 1, Math.max(0, (x + 0.5) * mean.w / width - 0.5));
+        const x0 = Math.floor(fx);
+        const x1 = Math.min(mean.w - 1, x0 + 1);
+        const ax = fx - x0;
+        const top = meanL[y0 * mean.w + x0] * (1 - ax) + meanL[y0 * mean.w + x1] * ax;
+        const bottom = meanL[y1 * mean.w + x0] * (1 - ax) + meanL[y1 * mean.w + x1] * ax;
+        localL = top * (1 - ay) + bottom * ay;
+      }
 
-    const target = Math.max(0, l - maxDrop * amount);
-    const factor = target / l;
+      // Wie stark hebt sich der Punkt von seiner Umgebung ab?
+      const excess = l - localL;
+      if (excess <= 0) continue;
 
-    d[i] = Math.min(255, r * factor);
-    d[i + 1] = Math.min(255, g * factor);
-    d[i + 2] = Math.min(255, b * factor);
+      const standsOut = smoothstep(0.05, 0.18, excess);
+      // Übergangszone früh gesättigt: darüber wirkt nur der konstante Abzug,
+      // sonst würde die Restmaserung mitzusammengedrückt.
+      const isBright = smoothstep(threshold, Math.min(1, threshold + 0.08), l);
+      const amount = standsOut * isBright * strength;
+      if (amount <= 0) continue;
+
+      const factor = Math.max(0, l - maxDrop * amount) / l;
+      d[i] = Math.min(255, r * factor);
+      d[i + 1] = Math.min(255, g * factor);
+      d[i + 2] = Math.min(255, b * factor);
+    }
   }
 
   ctx.putImageData(img, 0, 0);

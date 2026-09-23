@@ -24,6 +24,28 @@ npm run dev
 
 ## Änderungen
 
+### 5.5.0
+
+- **Kleine Vierecke in neu erzeugten Lichtflächen.** Ursache war die
+  Glanzdämpfung: Sie las die Umgebungshelligkeit aus einer auf 1/24
+  verkleinerten Kopie, aber ohne Überblendung — jeder 24 × 24-Pixel-Block bekam
+  denselben Vergleichswert. An scharfkantigen Sonnenflecken sprang die
+  Helligkeit an den Blockgrenzen um bis zu 45 Stufen, sonst um 7. Jetzt
+  bilinear überblendet; gemessen an der echten Funktion 6 Stufen an den
+  Grenzen gegenüber 8 im übrigen Bild, kein Blockmuster mehr.
+- **Sonne drinnen, Regen draußen.** Zwei Ursachen. Der Innen-Prompt verlangte
+  vom Fensterblick nur „plausibel halten", nie ein passendes Wetter — das Modell
+  ließ den grauen Himmel stehen. Und die Glanzdämpfung vor dem Upload konnte
+  ein helles Fenster nicht von einem Glanzfleck unterscheiden und zog den Blick
+  nach draußen grau (heller Himmel 247 → 222), bevor das Modell ihn sah.
+  Neu im Prompt: Fällt Sonne herein, zeigt der Blick nach draußen einen
+  freundlichen Himmel und besonntes Grün; das Motiv draußen bleibt unverändert.
+- **Dämpfung vor dem Upload entfernt.** Es bleibt die vorsichtigere
+  Nachbehandlung am fertigen Bild (Schwelle 0,90) und der Knopf „Glanz
+  entfernen". Der Prompt-Zweig, der von einer bereits entschärften Eingabe
+  ausging, ist entfallen.
+- Prompt-Fassung `2026.09.22-a`.
+
 ### 5.4.0 — Nur noch brauchbare Auflösungen
 
 Zwei Ergebnisse desselben Objekts unterschieden sich um Faktor vier im

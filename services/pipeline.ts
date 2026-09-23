@@ -92,7 +92,11 @@ export async function runEditJob(
   const glare =
     input.options?.glanzDaempfen !== false && glareTasks.includes(input.task) ? 1 : 0;
 
-  const prepared = await prepareImage(input.source, route.model.uploadMaxEdge, 0.92, glare);
+  // Keine Dämpfung mehr vor dem Upload (seit 5.5.0). Sie konnte ein helles
+  // Fenster nicht von einem Glanzfleck unterscheiden und zog den Blick nach
+  // draussen grau, bevor das Modell ihn überhaupt sah. Es bleibt die
+  // vorsichtigere Nachbehandlung am Ergebnis weiter unten.
+  const prepared = await prepareImage(input.source, route.model.uploadMaxEdge, 0.92, 0);
   if (onPrepared) {
     // Als Blob statt base64 – so landet nur ein Drittel des Volumens in der Ablage.
     const bytes = Uint8Array.from(atob(prepared.base64), c => c.charCodeAt(0));

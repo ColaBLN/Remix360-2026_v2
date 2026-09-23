@@ -9,7 +9,7 @@ import type { PromptStyle, TaskKind } from './providers/types';
  *
  * BEI JEDER PROMPT-ÄNDERUNG HOCHZÄHLEN.
  */
-export const PROMPT_VERSION = '2026.08.25-d';
+export const PROMPT_VERSION = '2026.09.22-a';
 
 export type Tageszeit =
   | 'Original' | 'Sunrise' | 'Mittags' | 'Nachmittags' | 'Sundown' | 'Nacht'
@@ -344,16 +344,7 @@ export function interiorPrompt(
       // Formuliert als Entfernungs-Auftrag – das Modell gibt den Glanz aus dem
       // Original sonst originalgetreu wieder, was formal richtig, aber
       // unverkäuflich ist.
-      o.glanzDaempfen
-        ? [
-            'The input image has already had its highlights pulled down, so bright floor areas arrive as ' +
-              'light grey rather than pure white. Paint the full wood grain, plank joints, tile grout or ' +
-              'carpet texture back into those grey areas at the same contrast as the rest of the floor, ' +
-              'and keep them matte. Do not brighten them back towards white.',
-            'Bright floor areas arrive as light grey: paint the full wood grain back into them, matte, ' +
-              'and do not brighten them towards white.',
-          ]
-        : [
+      [
         'CRITICAL — remove glare: wherever the source shows hard specular glare, a mirror-like sheen or a ' +
           'burnt-out white patch on the floor, worktops, glass or polished surfaces, remove it. Repaint ' +
           'those areas as an evenly lit matte surface. Inside every sunlit patch the wood grain, plank ' +
@@ -363,7 +354,16 @@ export function interiorPrompt(
         'Remove all mirror-like glare and burnt-out white patches from floors and polished surfaces; ' +
           'wood grain stays clearly visible inside sunlit areas, matte not lacquered.',
       ],
-      'Windows: keep the view through the windows plausible. Do not blow it out to pure white.',
+      // Bis 5.4.0 stand hier nur "plausibel halten". Das Modell liess dadurch
+      // einen grauen Regenhimmel stehen, während drinnen die Sonne schien.
+      [
+        'Windows: the view outside must match the light inside. If sunlight falls into the room, the ' +
+          'outdoor view shows a friendly sky with sun on trees, lawns and neighbouring buildings; replace ' +
+          'any grey, overcast or rainy sky visible through the glass accordingly. Keep what is outside ' +
+          'unchanged in shape and position, and do not blow the view out to pure white.',
+        'The view through the windows must match the sunlight inside: friendly sky, sunlit greenery, ' +
+          'no grey or rainy sky; keep the outdoor scene itself unchanged.',
+      ],
       o.verbessereHelligkeitKontrast &&
         'Exposure: open up shadow detail in corners and under furniture without flattening the image.',
       o.verbessereFarbe &&
