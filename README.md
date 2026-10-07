@@ -24,6 +24,34 @@ npm run dev
 
 ## Änderungen
 
+### 5.8.0 — Objekttreue
+
+Im Vergleich zweier Durchläufe desselben Küchenbilds ersetzte das Modell den
+Blick aus dem Fenster (Zaun- und Türbereich wurde zur Rasenfläche) und tauschte
+die Motive zweier Wandbilder aus. Gemessen: mittlere Abweichung 8 Helligkeits-
+stufen bei maximal 173, konzentriert auf die Fenster- und die rechte Bildzone.
+
+Bei einem Exposéfoto ist das keine Ästhetikfrage, sondern eine inhaltliche
+Falschdarstellung.
+
+- **Neue oberste Randbedingung.** Vor allen anderen Regeln steht jetzt: Die
+  Beleuchtung darf verändert werden, der Inhalt nie. Jedes Objekt aus der
+  Vorlage erscheint mit gleicher Form, Position, Größe, Farbe und gleichem
+  Inhalt — einschließlich allem, was durch die Fenster zu sehen ist. Nichts
+  kommt hinzu, nichts verschwindet.
+- **Bilder und bedruckte Flächen.** Eigene Regel: Bilder, Poster, Fotos,
+  bedruckte Paneele, Verpackungen und Etiketten behalten ihr exaktes Motiv.
+  Kein Austausch gegen ein anderes Motiv, und bei schwer auflösbaren Details
+  lieber originalgetreu wiedergeben als eine sauberere Fassung erfinden.
+- **Fensterregel entschärft.** Die Formulierung aus 5.5.0 verlangte einen
+  „freundlichen Himmel mit Sonne auf Bäumen, Rasen und Nachbargebäuden" — das
+  neue Modell hat den ersten Teil stärker gewichtet als den Zusatz „Motiv
+  draußen unverändert". Jetzt ausdrücklich: nur Himmel und Lichtstimmung
+  ändern, jedes Gebäude, jeder Zaun, Weg und Baum draußen bleibt exakt wie er
+  ist, nichts Neues erscheint.
+- Auch in der Kurzfassung für Seedream enthalten.
+- Prompt-Fassung `2026.10.07-a`.
+
 ### 5.7.0 — Nano Banana 2.1
 
 **Pflichtumstellung.** Google hat `gemini-3.1-flash-image` (Nano Banana 2)

@@ -9,7 +9,7 @@ import type { PromptStyle, TaskKind } from './providers/types';
  *
  * BEI JEDER PROMPT-ÄNDERUNG HOCHZÄHLEN.
  */
-export const PROMPT_VERSION = '2026.09.22-a';
+export const PROMPT_VERSION = '2026.10.07-a';
 
 export type Tageszeit =
   | 'Original' | 'Sunrise' | 'Mittags' | 'Nachmittags' | 'Sundown' | 'Nacht'
@@ -61,6 +61,17 @@ export const SYSTEM_INSTRUCTION =
  * unterschiedlich formuliert, wodurch die Grundtreue je nach Knopf variierte.
  */
 const INVARIANTS = [
+  // Wichtigste Regel, deshalb zuerst. Ein Exposéfoto darf anders beleuchtet
+  // sein, aber nichts anderes zeigen. In 5.7.0 hat ein Modell den Blick aus
+  // dem Fenster und zwei Wandbilder durch erfundene Motive ersetzt – das ist
+  // bei einer Immobilienanzeige eine inhaltliche Falschdarstellung.
+  'FIDELITY — you may change how the scene is lit. You may never change what it shows. ' +
+    'Every object present in the source must appear in the result with the same shape, position, ' +
+    'size, colour and content: furniture, appliances, fittings, textiles, plants, and everything ' +
+    'visible through the windows. Add nothing that is not there and remove nothing that is.',
+  'Pictures, posters, photographs, printed panels, packaging and labels keep their exact depicted ' +
+    'motif. Never substitute a different image, pattern or subject into a frame or printed surface. ' +
+    'If a detail is hard to resolve, reproduce it as it appears rather than inventing a cleaner one.',
   'Do not alter building geometry, wall positions, window shapes, roof lines or room proportions.',
   'Do not change camera position, focal length or perspective.',
   'Do not add, remove or move structural elements.',
@@ -74,6 +85,8 @@ const INVARIANTS = [
 ].join(' ');
 
 const CONCISE_TAIL =
+  'Change only the lighting, never the content: every object, and every picture or printed motif, ' +
+  'stays exactly as it is — add nothing, remove nothing, substitute nothing. ' +
   'Keep architecture, perspective and materials unchanged. Photorealistic, no arbitrary filters. ' +
   'No blown-out highlights: sunlit areas keep their texture, glossy surfaces stay matte, nothing burns to white.';
 
@@ -357,12 +370,14 @@ export function interiorPrompt(
       // Bis 5.4.0 stand hier nur "plausibel halten". Das Modell liess dadurch
       // einen grauen Regenhimmel stehen, während drinnen die Sonne schien.
       [
-        'Windows: the view outside must match the light inside. If sunlight falls into the room, the ' +
-          'outdoor view shows a friendly sky with sun on trees, lawns and neighbouring buildings; replace ' +
-          'any grey, overcast or rainy sky visible through the glass accordingly. Keep what is outside ' +
-          'unchanged in shape and position, and do not blow the view out to pure white.',
-        'The view through the windows must match the sunlight inside: friendly sky, sunlit greenery, ' +
-          'no grey or rainy sky; keep the outdoor scene itself unchanged.',
+        'Windows: the daylight outside must match the light inside. Where a grey or overcast sky is ' +
+          'visible through the glass, brighten it to a friendly one and let the existing greenery, ' +
+          'paving and neighbouring facades read as sunlit. Change only the sky and the light falling ' +
+          'on what is already there: every building, fence, path, tree and object outside keeps its ' +
+          'exact shape, position and appearance, and nothing new appears. Do not blow the view out ' +
+          'to pure white.',
+        'Brighten the sky seen through the windows and let what is outside read as sunlit, but keep ' +
+          'every building, fence, path and plant out there exactly as it is; add nothing new.',
       ],
       o.verbessereHelligkeitKontrast &&
         'Exposure: open up shadow detail in corners and under furniture without flattening the image.',
