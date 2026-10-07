@@ -6,26 +6,34 @@ import {
 } from './types';
 
 /**
- * Kosten sind Schätzwerte pro Bild in USD, Stand August 2026.
+ * Kosten sind Schätzwerte pro Bild in USD, Stand Oktober 2026.
  * Gemini rechnet Bildausgabe über Token ab; die 2K-Stufe kostet mehr als 1K.
+ *
+ * Beide Modelle liefen bis 5.7.0 auf -preview-Kennungen, obwohl es seit
+ * Mai 2026 allgemein verfügbare Versionen gibt.
  */
 export const GEMINI_MODELS: ModelDescriptor[] = [
   {
-    id: 'gemini:3.1-flash-image',
+    id: 'gemini:nano-banana-2.1',
+    // Nachfolger von gemini-3.1-flash-image (Nano Banana 2). Das Vorgänger-
+    // modell wird am 29. Oktober 2026 abgeschaltet, Google schreibt die
+    // Migration hierher vor. Bringt laut Google bessere Prompt-Treue,
+    // Textdarstellung und Panoramaformate bei gleicher Flash-Geschwindigkeit.
+    nativeId: 'gemini-nano-banana-2.1',
     providerId: 'gemini',
-    nativeId: 'gemini-3.1-flash-image-preview',
-    label: 'Gemini 3.1 Flash Image',
+    label: 'Nano Banana 2.1',
     quality: 'hd',
     costUsd: 0.11,
     uploadMaxEdge: 2048,
     outputMp: 4.2,
     promptStyle: 'structured',
-    supports: { outpaint: true, aspectRatio: true },
+    supports: { outpaint: true, aspectRatio: true, extremeAspect: true },
   },
   {
     id: 'gemini:3-pro-image',
     providerId: 'gemini',
-    nativeId: 'gemini-3-pro-image-preview',
+    // Ohne -preview: die allgemein verfügbare Fassung seit 28. Mai 2026.
+    nativeId: 'gemini-3-pro-image',
     label: 'Gemini 3 Pro Image',
     quality: 'ultra',
     costUsd: 0.24,

@@ -21,7 +21,18 @@ export type PromptStyle = 'structured' | 'concise';
 
 export type AspectRatio =
   | '1:1' | '2:3' | '3:2' | '3:4' | '4:3'
-  | '4:5' | '5:4' | '9:16' | '16:9' | '21:9';
+  | '4:5' | '5:4' | '9:16' | '16:9' | '21:9'
+  /**
+   * Extreme Panoramaformate, seit Nano Banana 2.1 verfügbar.
+   * Relevant für Aufnahmen aus 3D-Rundgängen, die vorher auf 21:9
+   * gezwängt wurden. Nicht jedes Modell kennt sie – siehe extremeAspect.
+   */
+  | '4:1' | '8:1' | '1:4' | '1:8';
+
+/** Formate, die jedes Modell beherrscht. */
+export const STANDARD_ASPECTS: AspectRatio[] = [
+  '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9',
+];
 
 export type TaskKind =
   | 'exterior'
@@ -79,7 +90,12 @@ export interface ModelDescriptor {
    */
   outputMp: number;
   promptStyle: PromptStyle;
-  supports: { outpaint: boolean; aspectRatio: boolean };
+  supports: {
+    outpaint: boolean;
+    aspectRatio: boolean;
+    /** Beherrscht die extremen Panoramaformate (4:1, 8:1, 1:4, 1:8). */
+    extremeAspect?: boolean;
+  };
 }
 
 export type ErrorKind =

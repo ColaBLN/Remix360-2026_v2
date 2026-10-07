@@ -22,6 +22,7 @@ import {
 } from './services/db';
 import { fromDataUrl, toDataUrl } from './utils/image';
 import { safeLocalStorage, generateUUID } from './utils/safeStorage';
+import { Remix360Logo } from './components/icons/Remix360Logo';
 
 export type { ImageJob, ImageType } from './state/jobsReducer';
 export type {
@@ -557,12 +558,9 @@ const App: React.FC = () => {
           <div className="w-full max-w-md p-10 bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(20,55,88,0.15)] border border-gray-50 text-center relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-blue via-brand-yellow to-brand-blue" />
             <div className="w-24 h-24 bg-brand-blue/5 rounded-3xl flex items-center justify-center mx-auto mb-8 transform rotate-3 hover:rotate-0 transition-transform duration-500">
-              <div className="w-16 h-16 bg-brand-blue rounded-2xl flex items-center justify-center shadow-lg shadow-brand-blue/30">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
+              <Remix360Logo className="h-14 w-14" />
             </div>
+
             <h2 className="text-3xl font-extrabold text-brand-blue mb-2 tracking-tight">
               Remix<span className="text-brand-yellow">360</span>Pro
             </h2>

@@ -1,4 +1,4 @@
-import { hashRequest, prepareImage } from '../utils/image';
+import { hashRequest, nearestAspectRatio, prepareImage } from '../utils/image';
 import { dampenGlareBlob } from '../utils/tone';
 import { getCached, putCached } from './cache';
 import {
@@ -117,7 +117,15 @@ export async function runEditJob(
       style: model.promptStyle,
     });
 
-    const cacheKey = await hashRequest([prepared.base64, prompt, model.id, prepared.aspectRatio]);
+    // Pro Modell neu bestimmt: weicht die Kette auf ein Modell ohne
+    // Panoramaunterstützung aus, würde ein 8:1-Wert dort abgelehnt.
+    const aspectRatio = nearestAspectRatio(
+      prepared.width,
+      prepared.height,
+      model.supports.extremeAspect === true
+    );
+
+    const cacheKey = await hashRequest([prepared.base64, prompt, model.id, aspectRatio]);
 
     if (settings.useCache && !input.bypassCache) {
       const hit = await getCached(cacheKey);
@@ -141,7 +149,7 @@ export async function runEditJob(
           imageBase64: prepared.base64,
           mimeType: prepared.mimeType,
           prompt,
-          aspectRatio: prepared.aspectRatio,
+          aspectRatio,
           task: input.task,
           signal: input.signal,
         }, getKey(model.providerId)),

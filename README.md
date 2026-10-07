@@ -24,6 +24,56 @@ npm run dev
 
 ## Änderungen
 
+### 5.7.0 — Nano Banana 2.1
+
+**Pflichtumstellung.** Google hat `gemini-3.1-flash-image` (Nano Banana 2)
+abgekündigt, Abschaltung am 29. Oktober 2026, mit vorgeschriebener Migration
+auf `gemini-nano-banana-2.1`. Das war unsere HD-Stufe bei Gemini direkt — ohne
+Umstellung wäre sie Ende Oktober ausgefallen.
+
+Dabei fiel auf, dass **beide** Gemini-Modelle noch auf `-preview`-Kennungen
+liefen, obwohl es seit Mai 2026 allgemein verfügbare Versionen gibt. Das Ultra-
+Modell zeigt jetzt auf `gemini-3-pro-image` statt `gemini-3-pro-image-preview`.
+
+| Stufe | vorher | jetzt |
+|---|---|---|
+| HD | `gemini-3.1-flash-image-preview` | `gemini-nano-banana-2.1` |
+| Ultra | `gemini-3-pro-image-preview` | `gemini-3-pro-image` |
+
+Nano Banana 2.1 behält laut Google Flash-Geschwindigkeit und -Kosten und
+verbessert visuelle Qualität, Prompt-Treue, Konsistenz über mehrere Schritte,
+Textdarstellung und Panoramaformate.
+
+**Panoramaformate.** `AspectRatio` kennt jetzt zusätzlich 4:1, 8:1, 1:4 und 1:8.
+Aufnahmen aus 3D-Rundgängen wurden bisher auf 21:9 gezwängt; ein 4096 × 1024er
+Panorama bekommt jetzt 4:1 statt 21:9.
+
+Nicht jedes Modell beherrscht diese Formate, deshalb trägt der Deskriptor ein
+`supports.extremeAspect`. Das Seitenverhältnis wird **pro Modell** bestimmt
+statt einmal vor der Modellkette — weicht die Pipeline auf ein Modell ohne
+Panoramaunterstützung aus, würde ein 8:1-Wert dort sonst abgelehnt, genau wie
+bei den 422-Fehlern im August. Aktuell kann nur Nano Banana 2.1 die extremen
+Formate; alle anderen bekommen automatisch den nächsten Standardwert.
+
+Normale Fotos sind unberührt: 4032 × 3024 bleibt 4:3, hochkant bleibt 3:4.
+
+### 5.6.0 — Bildmarke
+
+Eigenes Logo, `components/icons/Remix360Logo.tsx`. Der offene Ring steht für
+die 360-Grad-Drehung, die schräge gelbe Fläche für das Sonnenlicht, das durchs
+Fenster auf den Boden fällt. Zwei Formen, zwei Farben, keine Verläufe — bleibt
+bis auf Favicon-Größe lesbar.
+
+Markenfarben unverändert (#143758 / #F7C047), im Logo bewusst fest verdrahtet,
+damit es auch auf farbigem Grund und im Export stimmt. Eine helle Variante für
+dunklen Untergrund ist über `variant="light"` verfügbar.
+
+Eingesetzt im Kopfbereich neben dem Schriftzug, auf dem Zugangsbildschirm
+anstelle des generischen Schloss-Symbols, und als Favicon unter
+`public/icon.svg` — das bisherige Kamera-Emoji ist damit ersetzt. Dazu
+`theme-color`, was auf Mobilgeräten die Browserleiste einfärbt und später für
+die PWA ohnehin gebraucht wird.
+
 ### 5.5.0
 
 - **Kleine Vierecke in neu erzeugten Lichtflächen.** Ursache war die

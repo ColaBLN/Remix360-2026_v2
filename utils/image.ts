@@ -1,10 +1,12 @@
-import type { AspectRatio } from '../services/providers/types';
+import { STANDARD_ASPECTS, type AspectRatio } from '../services/providers/types';
 import { clippedShare, dampenGlare } from './tone';
 
 const RATIOS: Array<[AspectRatio, number]> = [
+  ['8:1', 8], ['4:1', 4],
   ['21:9', 21 / 9], ['16:9', 16 / 9], ['3:2', 3 / 2], ['4:3', 4 / 3],
   ['5:4', 5 / 4], ['1:1', 1], ['4:5', 4 / 5], ['3:4', 3 / 4],
   ['2:3', 2 / 3], ['9:16', 9 / 16],
+  ['1:4', 1 / 4], ['1:8', 1 / 8],
 ];
 
 /**
@@ -13,11 +15,19 @@ const RATIOS: Array<[AspectRatio, number]> = [
  * Vorher stand in callGeminiApi für jede Aufgabe fest "16:9". Ein 4:3-Foto
  * wurde dadurch beschnitten oder das Modell dichtete Bildinhalt dazu.
  */
-export function nearestAspectRatio(width: number, height: number): AspectRatio {
+export function nearestAspectRatio(
+  width: number,
+  height: number,
+  /** false = nur Formate, die jedes Modell kennt. */
+  allowExtreme = true
+): AspectRatio {
   const target = width / height;
-  let best = RATIOS[0];
+  const pool = allowExtreme
+    ? RATIOS
+    : RATIOS.filter(([name]) => (STANDARD_ASPECTS as string[]).includes(name));
+  let best = pool[0];
   let bestDelta = Infinity;
-  for (const entry of RATIOS) {
+  for (const entry of pool) {
     const delta = Math.abs(Math.log(target / entry[1]));
     if (delta < bestDelta) { bestDelta = delta; best = entry; }
   }
@@ -67,7 +77,9 @@ export async function prepareImage(
   maxEdge = 1568,
   quality = 0.92,
   /** Spitzlichter vor dem Upload herunterziehen. Siehe utils/tone.ts. */
-  glare = 0
+  glare = 0,
+  /** Extreme Panoramaformate zulassen – nur bei Modellen, die sie kennen. */
+  allowExtreme = false
 ): Promise<PreparedImage> {
   const bitmap = await decode(source);
   const srcW = bitmap.width;
@@ -97,7 +109,7 @@ export async function prepareImage(
     mimeType: 'image/jpeg',
     width,
     height,
-    aspectRatio: nearestAspectRatio(srcW, srcH),
+    aspectRatio: nearestAspectRatio(srcW, srcH, allowExtreme),
     bytes: Math.round((base64.length * 3) / 4),
     clipped,
   };

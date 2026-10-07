@@ -3,6 +3,7 @@ import {
   UsageData, calculateCosts, getGenerationLogs, clearGenerationLogs, GenerationLogEntry,
 } from '../services/usageService';
 import { connectedProviders, PROVIDERS, pricingByQuality, type Quality } from '../services/providers';
+import { Remix360Logo } from './icons/Remix360Logo';
 
 interface HeaderProps {
   modelProfile: Quality;
@@ -84,7 +85,8 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="w-full max-w-6xl mx-auto py-5 mb-8 flex flex-col xl:flex-row items-stretch justify-between gap-6 bg-white text-gray-800 rounded-3xl p-6 shadow-[0_15px_40px_rgba(20,55,88,0.06)] border border-gray-100">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 xl:w-1/4">
         <div className="text-left">
-          <h1 className="text-3xl font-extrabold text-brand-blue tracking-wide flex items-center gap-2">
+          <h1 className="text-3xl font-extrabold text-brand-blue tracking-wide flex items-center gap-2.5">
+            <Remix360Logo className="h-9 w-9 flex-shrink-0" />
             Remix<span className="text-brand-yellow font-black">360</span>Pro
             <span
               className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-blue/10 text-brand-blue shadow-inner border border-brand-blue/10"
