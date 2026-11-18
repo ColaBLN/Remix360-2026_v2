@@ -28,6 +28,11 @@ interface FalShape {
 
 const SHAPES: Record<string, FalShape> = {
   'fal-ai/nano-banana/edit': { imageField: 'image_urls', sizeField: 'aspect_ratio' },
+  // Nachfolger von fal-ai/nano-banana-2/edit. Andere Namensraum-Vorsilbe
+  // (google/ statt fal-ai/), aber identisches Eingabeschema: image_urls,
+  // aspect_ratio, resolution 1K|2K|4K, output_format, num_images, sync_mode.
+  // Deshalb ist der Tausch ohne Schema-Risiko möglich.
+  'google/nano-banana-2.1/edit': { imageField: 'image_urls', sizeField: 'aspect_ratio', resolution: '2K' },
   'fal-ai/nano-banana-2/edit': { imageField: 'image_urls', sizeField: 'aspect_ratio', resolution: '2K' },
   'fal-ai/nano-banana-pro/edit': { imageField: 'image_urls', sizeField: 'aspect_ratio', resolution: '2K' },
   'fal-ai/bytedance/seedream/v4/edit': { imageField: 'image_urls', sizeField: 'image_size' },
@@ -38,7 +43,7 @@ const SHAPES: Record<string, FalShape> = {
 const DEFAULT_SHAPE: FalShape = { imageField: 'image_urls', sizeField: 'aspect_ratio' };
 
 /**
- * Kosten sind Schätzwerte pro Bild in USD, Stand August 2026.
+ * Kosten sind Schätzwerte pro Bild in USD, Stand 18. November 2026.
  * Verbindlich ist immer das fal-Dashboard.
  *
  * Nano Banana ist Googles Bildmodell auf fal-Infrastruktur – dieselbe Familie
@@ -59,16 +64,22 @@ export const FAL_MODELS: ModelDescriptor[] = [
     supports: { outpaint: false, aspectRatio: true },
   },
   {
-    id: 'fal:nano-banana-2',
+    // Löst fal:nano-banana-2 ab. Das Vorgängermodell (Gemini 3.1 Flash Image)
+    // ist seit dem 6. Oktober 2026 abgekündigt – ohne Abschaltdatum, aber
+    // Google verweist ausdrücklich auf 2.1. Eingabeschema identisch, deshalb
+    // war der Wechsel ohne Test möglich.
+    id: 'fal:nano-banana-2.1',
     providerId: 'fal',
-    nativeId: 'fal-ai/nano-banana-2/edit',
-    label: 'Nano Banana 2',
+    nativeId: 'google/nano-banana-2.1/edit',
+    label: 'Nano Banana 2.1',
     quality: 'hd',
-    costUsd: 0.12,
+    // fal rechnet dieses Modell tokenbasiert ab, wie Google selbst. Schätzwert
+    // für 2K inklusive Eingabebild; die reine Ausgabe liegt bei 0,0504.
+    costUsd: 0.06,
     uploadMaxEdge: 2048,
     outputMp: 4.2,
     promptStyle: 'structured',
-    supports: { outpaint: true, aspectRatio: true },
+    supports: { outpaint: true, aspectRatio: true, extremeAspect: true },
   },
   {
     id: 'fal:nano-banana-pro',
@@ -94,6 +105,22 @@ export const FAL_MODELS: ModelDescriptor[] = [
  * liefern. Für ein Exposé-Titelbild ist 1 MP zu wenig – das Portal skaliert
  * dann von einer zu kleinen Vorlage, und das Ergebnis wirkt unscharf, obwohl
  * es pro Pixel sogar knackiger ist.
+ *
+ * Bewusst noch NICHT aufgenommen, obwohl inhaltlich interessant:
+ *
+ *   openai/gpt-image-2.5/flare/edit
+ *     Wirbt genau mit dem, was uns seit 5.7.0 beschäftigt: ändert nur das
+ *     Angefragte und lässt Motiv, Komposition und Hintergrund stehen. In einem
+ *     unabhängigen Test gehörte es zu den Modellen, die nichts umbauten,
+ *     während Nano Banana 2 für denselben Effekt Teile des Raums neu
+ *     erfunden hat. Wäre der Hebel, um die FIDELITY-Regeln wieder zu lockern.
+ *
+ *   bytedance/seedream/v5/pro/edit
+ *     Nachfolger unseres Eco-Modells, regionengenaues Editing.
+ *
+ * Beide fehlen hier aus einem einzigen Grund: fal gibt ihre Eingabeschemata
+ * nicht maschinenlesbar heraus (robots-gesperrt), und geratene Feldnamen waren
+ * schon einmal die Ursache einer 422-Serie. Erst nachsehen, dann aufnehmen.
  */
 
 function classify(status: number, body: string): ProviderError {

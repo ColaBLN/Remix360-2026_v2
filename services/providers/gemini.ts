@@ -6,8 +6,17 @@ import {
 } from './types';
 
 /**
- * Kosten sind Schätzwerte pro Bild in USD, Stand Oktober 2026.
- * Gemini rechnet Bildausgabe über Token ab; die 2K-Stufe kostet mehr als 1K.
+ * Kosten pro Bild in USD für die Stufe, die wir tatsächlich anfordern (2K).
+ * Nachgerechnet an Googles Preisliste am 18. November 2026.
+ *
+ * Bis 5.8.0 standen hier zu hohe Werte: 0,11 für Nano Banana 2.1 (das ist
+ * keine Preisstufe, die es gibt) und 0,24 für Gemini 3 Pro Image – letzteres
+ * ist der 4K-Preis, wir geben aber 2K aus. Die App hat damit rund das Doppelte
+ * angezeigt. Wer danach kalkuliert, verkalkuliert sich.
+ *
+ * Google rechnet über Token ab: 1120 Token bei 1K, 1680 bei 2K, 3780 bei 4K.
+ * Hinzu kommen Eingabe- und Thinking-Token, die hier nicht enthalten sind –
+ * real liegt der Wert also etwas höher. Verbindlich bleibt die Google-Abrechnung.
  *
  * Beide Modelle liefen bis 5.7.0 auf -preview-Kennungen, obwohl es seit
  * Mai 2026 allgemein verfügbare Versionen gibt.
@@ -23,7 +32,8 @@ export const GEMINI_MODELS: ModelDescriptor[] = [
     providerId: 'gemini',
     label: 'Nano Banana 2.1',
     quality: 'hd',
-    costUsd: 0.11,
+    // 2K: 1680 Token zu 30 USD pro 1 Mio. Token.
+    costUsd: 0.0504,
     uploadMaxEdge: 2048,
     outputMp: 4.2,
     promptStyle: 'structured',
@@ -36,7 +46,8 @@ export const GEMINI_MODELS: ModelDescriptor[] = [
     nativeId: 'gemini-3-pro-image',
     label: 'Gemini 3 Pro Image',
     quality: 'ultra',
-    costUsd: 0.24,
+    // 0,134 bei 1K und 2K; die 0,24 aus der alten Fassung gelten erst ab 4K.
+    costUsd: 0.134,
     uploadMaxEdge: 2048,
     outputMp: 4.2,
     promptStyle: 'structured',

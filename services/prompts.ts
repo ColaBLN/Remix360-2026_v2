@@ -9,7 +9,7 @@ import type { PromptStyle, TaskKind } from './providers/types';
  *
  * BEI JEDER PROMPT-ÄNDERUNG HOCHZÄHLEN.
  */
-export const PROMPT_VERSION = '2026.10.07-a';
+export const PROMPT_VERSION = '2026.11.18-a';
 
 export type Tageszeit =
   | 'Original' | 'Sunrise' | 'Mittags' | 'Nachmittags' | 'Sundown' | 'Nacht'
@@ -67,8 +67,17 @@ const INVARIANTS = [
   // bei einer Immobilienanzeige eine inhaltliche Falschdarstellung.
   'FIDELITY — you may change how the scene is lit. You may never change what it shows. ' +
     'Every object present in the source must appear in the result with the same shape, position, ' +
-    'size, colour and content: furniture, appliances, fittings, textiles, plants, and everything ' +
-    'visible through the windows. Add nothing that is not there and remove nothing that is.',
+    'size, colour and content: furniture, appliances, fittings, textiles and plants. ' +
+    'Add nothing that is not there and remove nothing that is.',
+  // 5.8.0 hat den Fensterausblick mit in die Objekttreue gezogen, inklusive
+  // Farbe. Dadurch blieb der graue Himmel stehen, während drinnen die Sonne
+  // Pfützen auf den Boden warf – physikalisch unmöglich und sofort als Fälschung
+  // lesbar. Die Trennung unten sperrt weiter die Objekte, gibt aber das Licht
+  // frei, denn genau das ist der Unterschied zwischen Umbeleuchten und Erfinden.
+  'Through a window the same lock applies to the objects: every building, fence, path, tree, ' +
+    'vehicle and horizon line keeps its exact shape, position and identity, and nothing new ' +
+    'appears out there. Only the light on them may change — sky, weather, sun direction, ' +
+    'brightness and the shadows they cast — as the lighting instruction requires.',
   'Pictures, posters, photographs, printed panels, packaging and labels keep their exact depicted ' +
     'motif. Never substitute a different image, pattern or subject into a frame or printed surface. ' +
     'If a detail is hard to resolve, reproduce it as it appears rather than inventing a cleaner one.',
@@ -78,8 +87,9 @@ const INVARIANTS = [
   'Do not add people, faces, licence plates, house numbers or readable signage.',
   'Preserve material identity: brick stays brick, render stays render, wood grain stays wood grain.',
   'Do not apply an arbitrary filter or bloom to the whole frame. Any overall colour cast must come from the stated time of day, nothing else.',
-  'Restraint applies to structure, materials and colour. It does not apply to lighting: ' +
-    'the lighting improvement must be clearly visible when compared to the source image.',
+  'Restraint applies to structure, materials and the colour of objects. It does not apply to ' +
+    'lighting: the lighting improvement must be clearly visible when compared to the source image, ' +
+    'and the sky and weather follow the lighting instruction rather than this restraint.',
   'No clipped highlights: every bright area must retain texture and detail. Nothing burns out to pure white.',
   'Photorealistic result. No HDR halos, no oversaturation, no plastic sheen. It must read as a photograph.',
 ].join(' ');
@@ -87,6 +97,8 @@ const INVARIANTS = [
 const CONCISE_TAIL =
   'Change only the lighting, never the content: every object, and every picture or printed motif, ' +
   'stays exactly as it is — add nothing, remove nothing, substitute nothing. ' +
+  'Outside a window the objects also stay the same objects, but the sky, the weather and the ' +
+  'sunlight on them follow the lighting instruction. ' +
   'Keep architecture, perspective and materials unchanged. Photorealistic, no arbitrary filters. ' +
   'No blown-out highlights: sunlit areas keep their texture, glossy surfaces stay matte, nothing burns to white.';
 
@@ -367,17 +379,28 @@ export function interiorPrompt(
         'Remove all mirror-like glare and burnt-out white patches from floors and polished surfaces; ' +
           'wood grain stays clearly visible inside sunlit areas, matte not lacquered.',
       ],
-      // Bis 5.4.0 stand hier nur "plausibel halten". Das Modell liess dadurch
-      // einen grauen Regenhimmel stehen, während drinnen die Sonne schien.
+      // Bis 5.4.0 stand hier nur "plausibel halten". Dann "heller machen" – und
+      // genau das lieferte das Modell: einen hellen, aber farblosen Himmel
+      // (gemessen R213/G212/B213, also null Blauanteil), während drinnen die
+      // Sonne harte Pfützen auf den Boden warf. Zwei unabhängige Anweisungen
+      // ergeben eben keine Physik. Deshalb steht hier jetzt die Kopplung:
+      // dieselbe Sonne, dieselbe Farbtemperatur, derselbe Einfallswinkel.
       [
-        'Windows: the daylight outside must match the light inside. Where a grey or overcast sky is ' +
-          'visible through the glass, brighten it to a friendly one and let the existing greenery, ' +
-          'paving and neighbouring facades read as sunlit. Change only the sky and the light falling ' +
-          'on what is already there: every building, fence, path, tree and object outside keeps its ' +
-          'exact shape, position and appearance, and nothing new appears. Do not blow the view out ' +
-          'to pure white.',
-        'Brighten the sky seen through the windows and let what is outside read as sunlit, but keep ' +
-          'every building, fence, path and plant out there exactly as it is; add nothing new.',
+        'Windows and the weather outside: the light indoors and the weather outdoors come from the ' +
+          'same sun and must agree with each other. If the lighting instruction above puts direct ' +
+          'sunlight into the room, then the sky seen through the glass is a clear, friendly blue ' +
+          'with at most light clouds; the sun sits in a position consistent with where the light ' +
+          'lands on the floor; and the greenery, paving and neighbouring facades outside are ' +
+          'visibly sunlit and cast their own shadows. A flat grey overcast view behind a sunlit ' +
+          'room is wrong and must be corrected. Keep the colour temperature of the daylight outside ' +
+          'the same as the light entering the room. Change only the sky and the light: every ' +
+          'building, fence, path, tree and object outside keeps its exact shape, position and ' +
+          'identity, and nothing new appears. Do not blow the view out to pure white — the view ' +
+          'keeps its detail and its colour.',
+        'Make the weather outside match the light inside: if sun falls into the room, the sky ' +
+          'through the glass is clear blue and everything outside is visibly sunlit with its own ' +
+          'shadows, at the same colour temperature. Keep every building, fence, path and plant out ' +
+          'there exactly as it is, add nothing new, and do not blow the view out to white.',
       ],
       o.verbessereHelligkeitKontrast &&
         'Exposure: open up shadow detail in corners and under furniture without flattening the image.',
